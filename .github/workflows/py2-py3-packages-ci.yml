@@ -32,6 +32,7 @@ jobs:
         run: |
           python_version="${{ matrix.python-version }}"
           py_version="${python_version/./}"
+          echo ${{ github.ref == 'refs/head/master' }}
           branch=(`[[ ${{ github.ref == 'refs/head/master' }} ]] && echo 'master' || echo 'dev'`)
           TOXENV="py$py_version-$branch"
           echo $TOXENV
