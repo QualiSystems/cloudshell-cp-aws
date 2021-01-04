@@ -33,6 +33,7 @@ jobs:
           python_version="${{ matrix.python-version }}"
           py_version="${python_version/./}"
           target_branch=${{ github.base_ref || github.ref }}
+          echo $target_branch
           target_branch=(`[[ ${target_branch::9} == 'refs/head' ]] && echo ${target_branch:10} || echo $target_branch`)
           echo $target_branch
           is_master=${{ env.target_branch == 'master' || startsWith(github.ref, 'refs/tags') }}
