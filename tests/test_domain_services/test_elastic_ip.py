@@ -1,9 +1,10 @@
 from unittest import TestCase
 from unittest.mock import Mock, call
 
+from cloudshell.cp.core.models import ConnectToSubnetParams
+
 from cloudshell.cp.aws.domain.services.ec2.elastic_ip import ElasticIpService
 from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
-from cloudshell.cp.core.models import ConnectToSubnetParams
 
 
 class TestElasticIpService(TestCase):

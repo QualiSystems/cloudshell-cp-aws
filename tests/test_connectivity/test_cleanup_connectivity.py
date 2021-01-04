@@ -1,10 +1,11 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
+from cloudshell.cp.core.models import PrepareCloudInfra
+
 from cloudshell.cp.aws.domain.conncetivity.operations.cleanup import (
     CleanupSandboxInfraOperation,
 )
-from cloudshell.cp.core.models import PrepareCloudInfra
 
 
 class TestCleanupSandboxInfra(TestCase):

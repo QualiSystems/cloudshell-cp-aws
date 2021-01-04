@@ -5,6 +5,8 @@ from collections import defaultdict
 
 from jsonschema import validate
 
+from cloudshell.cp.core.models import RemoveTrafficMirroringResult
+
 from cloudshell.cp.aws.domain.common.CheckCancellationThread import (
     CheckCancellationThread,
 )
@@ -16,7 +18,6 @@ from cloudshell.cp.aws.models.traffic_mirror_fulfillment import (
     TrafficMirrorFulfillment,
     create_results,
 )
-from cloudshell.cp.core.models import RemoveTrafficMirroringResult
 
 flatten = itertools.chain.from_iterable
 

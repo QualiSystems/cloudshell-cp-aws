@@ -3,6 +3,10 @@ import json
 import jsonpickle
 from botocore.exceptions import ClientError, NoCredentialsError
 
+from cloudshell.cp.core.drive_request_parser import DriverRequestParser
+from cloudshell.cp.core.models import ConnectSubnet, DeployApp, VmDetailsData
+from cloudshell.cp.core.utils import single
+
 from cloudshell.cp.aws.common.deploy_data_holder import DeployDataHolder
 from cloudshell.cp.aws.common.driver_helper import CloudshellDriverHelper
 from cloudshell.cp.aws.domain.ami_management.operations.access_key_operation import (
@@ -94,9 +98,6 @@ from cloudshell.cp.aws.models.network_actions_models import (
 )
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
 from cloudshell.cp.aws.models.vm_details import VmDetailsRequest
-from cloudshell.cp.core.drive_request_parser import DriverRequestParser
-from cloudshell.cp.core.models import ConnectSubnet, DeployApp, VmDetailsData
-from cloudshell.cp.core.utils import single
 
 
 class AWSShell:

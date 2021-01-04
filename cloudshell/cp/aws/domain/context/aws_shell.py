@@ -1,9 +1,10 @@
 from cloudshell.core.context.error_handling_context import ErrorHandlingContext
+from cloudshell.shell.core.session.cloudshell_session import CloudShellSessionContext
+from cloudshell.shell.core.session.logging_session import LoggingSessionContext
+
 from cloudshell.cp.aws.domain.context.aws_api import AwsApiSessionContext
 from cloudshell.cp.aws.domain.context.aws_resource_model import AwsResourceModelContext
 from cloudshell.cp.aws.domain.services.parsers.aws_model_parser import AWSModelsParser
-from cloudshell.shell.core.session.cloudshell_session import CloudShellSessionContext
-from cloudshell.shell.core.session.logging_session import LoggingSessionContext
 
 
 class AwsShellContext:

@@ -3,12 +3,6 @@ import traceback
 import jsonpickle
 from retrying import retry
 
-from cloudshell.cp.aws.domain.conncetivity.operations.prepare_subnet_executor import (
-    PrepareSubnetExecutor,
-)
-from cloudshell.cp.aws.domain.services.waiters.vpc_peering import (
-    VpcPeeringConnectionWaiter,
-)
 from cloudshell.cp.core.models import (
     ActionResultBase,
     CreateKeys,
@@ -17,6 +11,13 @@ from cloudshell.cp.core.models import (
     PrepareCloudInfraResult,
     PrepareSubnet,
     PrepareSubnetActionResult,
+)
+
+from cloudshell.cp.aws.domain.conncetivity.operations.prepare_subnet_executor import (
+    PrepareSubnetExecutor,
+)
+from cloudshell.cp.aws.domain.services.waiters.vpc_peering import (
+    VpcPeeringConnectionWaiter,
 )
 
 INVALID_REQUEST_ERROR = "Invalid request: {0}"

@@ -1,8 +1,9 @@
+from cloudshell.shell.core.driver_context import ResourceCommandContext
+
 from cloudshell.cp.aws.domain.services.parsers.aws_model_parser import AWSModelsParser
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
     AWSEc2CloudProviderResourceModel,
 )
-from cloudshell.shell.core.driver_context import ResourceCommandContext
 
 
 class AwsResourceModelContext:

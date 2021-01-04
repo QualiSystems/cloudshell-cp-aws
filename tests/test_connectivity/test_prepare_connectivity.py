@@ -1,15 +1,16 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
-from cloudshell.cp.aws.domain.conncetivity.operations.prepare import (
-    PrepareSandboxInfraOperation,
-)
 from cloudshell.cp.core.models import (
     CreateKeys,
     PrepareCloudInfra,
     PrepareCloudInfraParams,
     PrepareSubnet,
     PrepareSubnetParams,
+)
+
+from cloudshell.cp.aws.domain.conncetivity.operations.prepare import (
+    PrepareSandboxInfraOperation,
 )
 
 

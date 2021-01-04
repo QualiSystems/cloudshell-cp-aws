@@ -5,6 +5,11 @@ from uuid import uuid4
 
 from jsonschema import validate
 
+from cloudshell.cp.core.models import (
+    CreateTrafficMirroring,
+    CreateTrafficMirroringParams,
+)
+
 from cloudshell.cp.aws.domain.common.cancellation_service import (
     CommandCancellationService,
 )
@@ -19,10 +24,6 @@ from cloudshell.cp.aws.domain.services.cloudshell.traffic_mirror_pool_services i
 from cloudshell.cp.aws.domain.services.ec2.mirroring import TrafficMirrorService
 from cloudshell.cp.aws.domain.services.ec2.tags import TagService
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
-from cloudshell.cp.core.models import (
-    CreateTrafficMirroring,
-    CreateTrafficMirroringParams,
-)
 
 
 class TestCreateTrafficMirroring(TestCase):

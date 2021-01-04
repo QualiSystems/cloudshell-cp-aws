@@ -2,6 +2,14 @@ import traceback
 import uuid
 from multiprocessing import TimeoutError
 
+from cloudshell.cp.core.models import (
+    ConnectSubnet,
+    ConnectToSubnetActionResult,
+    ConnectToSubnetParams,
+    DeployAppResult,
+)
+from cloudshell.cp.core.utils import convert_dict_to_attributes_list
+
 from cloudshell.cp.aws.domain.common.list_helper import first_or_default
 from cloudshell.cp.aws.domain.services.ec2.security_group import SecurityGroupService
 from cloudshell.cp.aws.domain.services.ec2.tags import IsolationTagValues, TypeTagValues
@@ -10,13 +18,6 @@ from cloudshell.cp.aws.domain.services.parsers.port_group_attribute_parser impor
 )
 from cloudshell.cp.aws.models.ami_deployment_model import AMIDeploymentModel
 from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
-from cloudshell.cp.core.models import (
-    ConnectSubnet,
-    ConnectToSubnetActionResult,
-    ConnectToSubnetParams,
-    DeployAppResult,
-)
-from cloudshell.cp.core.utils import convert_dict_to_attributes_list
 
 
 class DeployAMIOperation:

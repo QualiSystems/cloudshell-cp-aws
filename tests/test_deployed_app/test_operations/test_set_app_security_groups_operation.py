@@ -1,6 +1,8 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
+from cloudshell.shell.core.driver_context import ReservationContextDetails
+
 from cloudshell.cp.aws.domain.deployed_app.operations.set_app_security_groups import (
     SetAppSecurityGroupsOperation,
 )
@@ -12,7 +14,6 @@ from cloudshell.cp.aws.models.app_security_groups_model import (
 )
 from cloudshell.cp.aws.models.port_data import PortData
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
-from cloudshell.shell.core.driver_context import ReservationContextDetails
 
 
 class TestSetAppSecurityGroupsOperation(TestCase):
