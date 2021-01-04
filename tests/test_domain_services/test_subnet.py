@@ -70,11 +70,10 @@ class TestSubnetService(TestCase):
         vpc.id = "123"
         vpc.subnets.all = Mock(return_value=[])
         # act
-        with self.assertRaises(Exception) as error:
+        with self.assertRaises(Exception, msg="The given VPC(123) has no subnets"):
             self.subnet_srv.get_vpc_subnets(vpc)
         # assert
         vpc.subnets.all.assert_called_once()
-        self.assertEqual(error.exception.message, "The given VPC(123) has no subnets")
 
     def test_get_first_or_none_subnet_from_vpc_returns_first(self):
         # arrange

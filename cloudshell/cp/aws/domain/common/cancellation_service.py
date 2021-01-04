@@ -1,16 +1,20 @@
+from typing import Optional
+
 from cloudshell.cp.aws.domain.common.exceptions import CancellationException
+from cloudshell.shell.core.driver_context import CancellationContext
 
 
 class CommandCancellationService:
-    def check_if_cancelled(self, cancellation_context, data=None):
+    def check_if_cancelled(
+        self, cancellation_context: CancellationContext, data: Optional[dict] = None
+    ):
         """Check if command was cancelled from the CloudShell.
 
-        :param cancellation_context cloudshell.shell.core.driver_context.CancellationContext instance  # noqa: E501
+        :param cancellation_context: cancellation context
         :param dict data: Dictionary that will be added to the cancellation exception
             if raised. Use this container to add context data to the cancellation
             exception to be used by the exception handler
-        :raises cloudshell.cp.azure.common.exceptions.cancellation_exception.CancellationException  # noqa: E501
-        :return:
+        :raises CancellationException
         """
         if cancellation_context and cancellation_context.is_cancelled:
             raise CancellationException("Command was cancelled", data)

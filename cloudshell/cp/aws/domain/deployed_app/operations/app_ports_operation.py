@@ -88,7 +88,7 @@ class DeployedAppPortsOperation:
                 network_interface
             )
 
-        for key, value in network_interfaces_dict.iteritems():
+        for key, value in network_interfaces_dict.items():
             for network_interface in value:
                 subnet_name = self._get_network_interface_subnet_name(network_interface)
                 result_str_list.append("Subnet Id: " + key)

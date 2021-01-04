@@ -47,10 +47,8 @@ class TestPrepareSandboxInfra(TestCase):
         prepare_subnet.actionParams = PrepareCloudInfraParams()
         actions = [prepare_subnet]
         # Act
-        with self.assertRaises(Exception) as error:
+        with self.assertRaises(Exception, msg="Not all actions are PrepareSubnet"):
             self.executor.execute(actions)
-        # Assert
-        self.assertEqual(error.exception.message, "Not all actions are PrepareSubnet")
 
     def test_execute_with_no_vpc(self):
         # Arrange
@@ -63,10 +61,8 @@ class TestPrepareSandboxInfra(TestCase):
 
         self.reservation.reservation_id = "123"
         # Act
-        with self.assertRaises(Exception) as error:
+        with self.assertRaises(Exception, msg="VPC for reservation 123 not found."):
             self.executor.execute(actions)
-        # Assert
-        self.assertEqual(error.exception.message, "VPC for reservation 123 not found.")
 
     def test_execute_gets_existing_subnet_and_no_wait(self):
         # Arrange

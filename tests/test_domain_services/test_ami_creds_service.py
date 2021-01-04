@@ -11,31 +11,29 @@ class TestAmiCredentialsService(TestCase):
     def setUp(self):
         self.password_waiter = Mock(spec=PasswordWaiter)
         self.credentials_service = InstanceCredentialsService(self.password_waiter)
-        self.pem = [
-            "-----BEGIN RSA PRIVATE KEY-----\n",
-            "MIIEpQIBAAKCAQEAzdX6TR8fnJ0vXilViU5OHzvHfQVXdCufZcr1yDiT3hJ04IgX/INaOfI5+xIC\n",  # noqa
-            "+qrl9IMJ19Tol/t+asB3eiIo2DK6K5DFYhBDSGKfC2AE+c53B/eeTq/+CGjTma6bNaFSNkiJdOhM\n",  # noqa
-            "fNdmAOYYx4B2PqZXgNPGbN3WEGYldU6DiX1IU/hmihjdoW8oL/84DUrkJCl+lZhqP9uVHMp/8yzu\n",  # noqa
-            "GovUOF2FNuXMo0tSFeUBeUKZig28u/lhuCEqq2TkHbpvlojjyVqqRoxqw/2ZnUua4PnKSx1U8ddg\n",  # noqa
-            "OGg4QXxX1D2DQ8XpRL7pEYdK3A51AaZr7IcpSwtDm5XS/FZ0slCUFwIDAQABAoIBAB3hlGahwAsS\n",  # noqa
-            "XpAC3CIEth6epQUnQ1zgAFHctvWMERtJ/qGh4CmOQAjtezFRmhEdwihO5ZzpkaKOpfmFW1LlppxM\n",  # noqa
-            "MO6mI6FqzvmxJ3mVROOm72y+q8KslepOnXlP+cQ9WRv8R8gq+P+enXY/8RT1NzU9HLLdC48+XRcg\n",  # noqa
-            "XQu8jCfnP1yxKFBxvd8iJtb59KWtaljHoYZSy1P+QPXWtaMb9p+Vd91g9UfPr0b5Ih+Q2AZQP1/F\n",  # noqa
-            "I+TypGCEp16K2xIiXaf/CxEWGfRTnwhyyxnEB0apcDv4KJtiZlcl81y3Haeuo6+A8PksnVXDACY3\n",  # noqa
-            "GRLksEGIfokb9rqFnk4ay37N1zECgYEA8ggt65yj6iAp1WzspinzxKjQovcUBt1nMo63I1RB41fb\n",  # noqa
-            "g0kVHigZDpoqziSZoHmt7mSjS1OBq6xNnmtCOFF4uYkA5d7WyFSfeKSXqT5WFfPOOoGVnw4mIoeD\n",  # noqa
-            "OVV401pObis+sVhIYb5nOepDjnV7XIiIlV8DRu8RuP+PKp8C9x0CgYEA2bcH9tJHTqUOs4us0KWO\n",  # noqa
-            "+5To96iEqqs5bnIZueNGRDGZkSrjX46IGS5o+awCChvvJAPf/CRSpoQhQqcUCy+deNrfQHt2Zpaq\n",  # noqa
-            "gD9Qv3AKv5ESnvqnLVFy4FVYvTIDxs8rbTAVHe1/IBi5+xAOnpi2riPhTOVzyJ8NhhwtVYyDbcMC\n",  # noqa
-            "gYEA2HcESvOfjmgRwjZXOQ3QXZT2dKoymSkvgQIvPUPAYgpT44lbf8sxDeRIYHJPjD0HmG0dtuMK\n",  # noqa
-            "2HWUPhmD8ka7iITF7tFsm2ND9WyPz+hWqe+SBLWdEdJfvQYiEQcmtzDPcKzwt0BUDEd0n1Gr9h+Q\n",  # noqa
-            "o2PhdGaz0Z9D5Id8jgwFZOkCgYEA0hPg5XPGRsbSRsGyQapfK7dmjQLY8O5DfqUu2cXKWacarY8a\n",  # noqa
-            "02vvO40i0jf9x89ok/IBQYWzEuZQScZ6esi5RJK99bSsbRVY9GMkAXWViX/s3eazRfFfzcPM2tLV\n",  # noqa
-            "/hKNrtBEsBopHsl9PBskYDivnZ0Vm2OUs7N2E0BBJlltwI0CgYEA5/eb88pqBcCrfrYi4U8WN3id\n",  # noqa
-            "o0t3dj4ca7BPGwvGGMuEB4JPZmsS3AWMGXKSBpEpqMSxHMeTZtxo/ioi4mEGM5SMi0KLSnrWuuYX\n",  # noqa
-            "+OQfjjQfag6Y7SdiQAyhvpndODqEiqfFDqCnR11T447V/JwyEdxFUwYoLiot5tcZOOOxl2o=\n",  # noqa
-            "-----END RSA PRIVATE KEY-----",
-        ]
+        self.pem = """-----BEGIN RSA PRIVATE KEY-----
+MIIEpQIBAAKCAQEAzdX6TR8fnJ0vXilViU5OHzvHfQVXdCufZcr1yDiT3hJ04IgX/INaOfI5+xIC
++qrl9IMJ19Tol/t+asB3eiIo2DK6K5DFYhBDSGKfC2AE+c53B/eeTq/+CGjTma6bNaFSNkiJdOhM
+fNdmAOYYx4B2PqZXgNPGbN3WEGYldU6DiX1IU/hmihjdoW8oL/84DUrkJCl+lZhqP9uVHMp/8yzu
+GovUOF2FNuXMo0tSFeUBeUKZig28u/lhuCEqq2TkHbpvlojjyVqqRoxqw/2ZnUua4PnKSx1U8ddg
+OGg4QXxX1D2DQ8XpRL7pEYdK3A51AaZr7IcpSwtDm5XS/FZ0slCUFwIDAQABAoIBAB3hlGahwAsS
+XpAC3CIEth6epQUnQ1zgAFHctvWMERtJ/qGh4CmOQAjtezFRmhEdwihO5ZzpkaKOpfmFW1LlppxM
+MO6mI6FqzvmxJ3mVROOm72y+q8KslepOnXlP+cQ9WRv8R8gq+P+enXY/8RT1NzU9HLLdC48+XRcg
+XQu8jCfnP1yxKFBxvd8iJtb59KWtaljHoYZSy1P+QPXWtaMb9p+Vd91g9UfPr0b5Ih+Q2AZQP1/F
+I+TypGCEp16K2xIiXaf/CxEWGfRTnwhyyxnEB0apcDv4KJtiZlcl81y3Haeuo6+A8PksnVXDACY3
+GRLksEGIfokb9rqFnk4ay37N1zECgYEA8ggt65yj6iAp1WzspinzxKjQovcUBt1nMo63I1RB41fb
+g0kVHigZDpoqziSZoHmt7mSjS1OBq6xNnmtCOFF4uYkA5d7WyFSfeKSXqT5WFfPOOoGVnw4mIoeD
+OVV401pObis+sVhIYb5nOepDjnV7XIiIlV8DRu8RuP+PKp8C9x0CgYEA2bcH9tJHTqUOs4us0KWO
++5To96iEqqs5bnIZueNGRDGZkSrjX46IGS5o+awCChvvJAPf/CRSpoQhQqcUCy+deNrfQHt2Zpaq
+gD9Qv3AKv5ESnvqnLVFy4FVYvTIDxs8rbTAVHe1/IBi5+xAOnpi2riPhTOVzyJ8NhhwtVYyDbcMC
+gYEA2HcESvOfjmgRwjZXOQ3QXZT2dKoymSkvgQIvPUPAYgpT44lbf8sxDeRIYHJPjD0HmG0dtuMK
+2HWUPhmD8ka7iITF7tFsm2ND9WyPz+hWqe+SBLWdEdJfvQYiEQcmtzDPcKzwt0BUDEd0n1Gr9h+Q
+o2PhdGaz0Z9D5Id8jgwFZOkCgYEA0hPg5XPGRsbSRsGyQapfK7dmjQLY8O5DfqUu2cXKWacarY8a
+02vvO40i0jf9x89ok/IBQYWzEuZQScZ6esi5RJK99bSsbRVY9GMkAXWViX/s3eazRfFfzcPM2tLV
+/hKNrtBEsBopHsl9PBskYDivnZ0Vm2OUs7N2E0BBJlltwI0CgYEA5/eb88pqBcCrfrYi4U8WN3id
+o0t3dj4ca7BPGwvGGMuEB4JPZmsS3AWMGXKSBpEpqMSxHMeTZtxo/ioi4mEGM5SMi0KLSnrWuuYX
++OQfjjQfag6Y7SdiQAyhvpndODqEiqfFDqCnR11T447V/JwyEdxFUwYoLiot5tcZOOOxl2o=
+-----END RSA PRIVATE KEY-----"""
         self.encrypted = "NGtKthoEIcRdof+dlQJcJ87HQpPfjwFHKe6e5fiSCt2l523FWgIuqIv+Pda/KF+q/jzhacospZUjQqSBX7aKHA1Qm7tWsNywYP0nAypJOTU0UtJZKVZ9ymXHsPXq+kvaEtq0xvl08MCKUiROlV7jlS1sySvspcum5E49s8lm2nAS9W4dljdytFP/CtEDEfOec87DQG9aCPsDOGbH8efWpEDEQ5pzNhybGyrlI3x8PxFM5JNtSZFTQxCs0vfYjsM2I3VKcrIuVGaQOu9qZZArzANUDCbE3V+BD664y0W5h4RjyowhEAtcTc8NxEFAYOKMJAb253TjLr3Vk/7MmwgFkA=="  # noqa
         self.decrypted = "542(LhS@Ymq"
 
@@ -44,9 +42,7 @@ class TestAmiCredentialsService(TestCase):
         instance.password_data = Mock(return_value={"PasswordData": ""})
         self.password_waiter.wait = Mock(return_value=self.encrypted)
 
-        res = self.credentials_service.get_windows_credentials(
-            instance, "".join(self.pem)
-        )
+        res = self.credentials_service.get_windows_credentials(instance, self.pem)
         self.assertEquals(
             self.decrypted,
             self.credentials_service.decrypt_password(self.pem, self.encrypted),

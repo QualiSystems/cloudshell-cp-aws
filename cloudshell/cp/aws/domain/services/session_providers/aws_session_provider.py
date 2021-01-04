@@ -1,7 +1,7 @@
+import configparser
 import os
 
 import boto3
-import ConfigParser
 
 from cloudshell.cp.aws.models.aws_api import AwsApiClients
 
@@ -89,9 +89,9 @@ class AWSSessionProvider:
         return None
 
     def _get_test_credentials(self):
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config_path = self.test_cred_path
-        config.readfp(open(config_path))
+        config.read_file(open(config_path))
         return AWSCredentials(
             config.get("Credentials", "Access Key ID"),
             config.get("Credentials", "Secret Access Key"),

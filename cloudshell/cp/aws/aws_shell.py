@@ -94,7 +94,7 @@ from cloudshell.cp.aws.models.network_actions_models import (
 )
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
 from cloudshell.cp.aws.models.vm_details import VmDetailsRequest
-from cloudshell.cp.core import DriverRequestParser
+from cloudshell.cp.core.drive_request_parser import DriverRequestParser
 from cloudshell.cp.core.models import ConnectSubnet, DeployApp, VmDetailsData
 from cloudshell.cp.core.utils import single
 
@@ -573,7 +573,7 @@ class AWSShell:
             except Exception as e:
                 result = VmDetailsData()
                 result.appName = request.app_name
-                result.error = e.message
+                result.error = str(e)
                 results.append(result)
 
         return self.command_result_parser.set_command_result(results)

@@ -1,9 +1,11 @@
 import binascii
 from base64 import b64decode
+from typing import Optional
 
 from Crypto.PublicKey import RSA
 
 from cloudshell.cp.aws.models.ami_credentials import AMICredentials
+from cloudshell.shell.core.driver_context import CancellationContext
 
 
 class InstanceCredentialsService:
@@ -17,20 +19,20 @@ class InstanceCredentialsService:
         self.password_waiter = password_waiter
 
     def get_windows_credentials(
-        self, instance, key_value, wait_for_password=True, cancellation_context=None
-    ):
-        """# noqa
+        self,
+        instance,
+        key_value: str,
+        wait_for_password: bool = True,
+        cancellation_context: Optional[CancellationContext] = None,
+    ) -> Optional[AMICredentials]:
+        """Get windows credentials.
 
         :param instance: Ami amazon instance
-        :param str key_value: pem lines
-        :param bool wait_for_password:
-        :param CancellationContext cancellation_context:
-        :return:
-        :rtype: AMICredentials
+        :param key_value: pem lines
         """
-        password_data = instance.password_data()["PasswordData"]
+        password_data = instance.password_data()["PasswordData"]  # todo returns bytes?
         if not password_data and wait_for_password:
-            password_data = self.password_waiter.wait(
+            password_data = self.password_waiter.wait(  # todo bytes?
                 instance=instance, cancellation_context=cancellation_context
             )
 
@@ -42,7 +44,7 @@ class InstanceCredentialsService:
             password=self.decrypt_password(key_value, password_data),
         )
 
-    def decrypt_password(self, key_value, encrypted_data):
+    def decrypt_password(self, key_value: str, encrypted_data: str) -> str:
         rsa_key = RSA.importKey(key_value)
         encrypted_data = b64decode(encrypted_data)
         cipher_text = int(binascii.hexlify(encrypted_data), 16)
@@ -56,13 +58,13 @@ class InstanceCredentialsService:
         return self._pkcs1_unpad(decrypted_data)
 
     @staticmethod
-    def _pkcs1_unpad(text):
+    def _pkcs1_unpad(text: bytes) -> Optional[str]:
         # From http://kfalck.net/2011/03/07/decoding-pkcs1-padding-in-python
-        if len(text) > 0 and text[0] == "\x02":
+        if len(text) > 0 and text[:1] == b"\x02":
             # Find end of padding marked by nul
-            pos = text.find("\x00")
+            pos = text.find(b"\x00")
             if pos > 0:
-                return text[pos + 1 :]
+                return text[pos + 1 :].decode()
         return None
 
     @staticmethod
