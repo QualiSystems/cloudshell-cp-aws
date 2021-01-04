@@ -6,7 +6,7 @@ cloudshell-cp-core~=1.2.0
 pyrsistent==0.16.1
 boto3>=1.9.0,<1.10.0
 typing==3.6.4
-ipaddress==1.0.22
+ipaddress~=1.0.22
 netaddr==0.7.19
 jsonpickle==0.9.3
 pycrypto==2.6.1
