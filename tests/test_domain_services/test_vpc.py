@@ -314,16 +314,14 @@ class TestVPCService(TestCase):
         # Arrange
         self.route_table_service.get_route_table = Mock(return_value=None)
         # Act
-        with self.assertRaises(Exception) as error:
+        with self.assertRaises(
+            Exception, msg="Routing table for non-public subnet was not found"
+        ):
             self.vpc_service.get_or_throw_private_route_table(
                 ec2_session=self.ec2_session,
                 reservation=self.reservation,
                 vpc_id=self.vpc_id,
             )
-        # Assert
-        self.assertEqual(
-            error.exception.message, "Routing table for non-public subnet was not found"
-        )
 
     def test_get_vpc_cidr(self):
         # Arrange
@@ -373,16 +371,14 @@ class TestVPCService(TestCase):
         self.subnet_service.get_first_or_none_subnet_from_vpc = Mock(return_value=None)
         self.ec2_client.describe_availability_zones = Mock(return_value=None)
         # Act
-        with self.assertRaises(Exception) as error:
+        with self.assertRaises(
+            Exception, msg="No AvailabilityZone is available for this vpc"
+        ):
             self.vpc_service.get_or_pick_availability_zone(
                 ec2_client=self.ec2_client,
                 vpc=self.vpc,
                 aws_ec2_datamodel=self.aws_ec2_datamodel,
             )
-        # Assert
-        self.assertEqual(
-            error.exception.message, "No AvailabilityZone is available for this vpc"
-        )
 
     def test_remove_custom_route_tables(self):
         # Arrange

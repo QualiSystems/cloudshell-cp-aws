@@ -12,7 +12,7 @@ class VmCustomParamsExtractor:
         :rtype str:
         """
         name = name.lower()
-        params = filter(lambda x: x.name.lower() == name, custom_params)
+        params = list(filter(lambda x: x.name.lower() == name, custom_params))
         if len(params) == 1:
             return params[0].value
         return None

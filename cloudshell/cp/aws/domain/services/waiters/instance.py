@@ -52,7 +52,7 @@ class InstanceWaiter:
         if state not in self.INSTANCE_STATES:
             raise ValueError("Unsupported instance state")
 
-        instance_ids = filter(lambda x: str(x.id), instances)
+        instance_ids = set(filter(lambda x: str(x.id), instances))
 
         start_time = time.time()
         last_item = 0

@@ -12,7 +12,7 @@ from cloudshell.cp.aws.models.app_security_groups_model import (
 )
 from cloudshell.cp.aws.models.port_data import PortData
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
-from cloudshell.shell.core.context import ReservationContextDetails
+from cloudshell.shell.core.driver_context import ReservationContextDetails
 
 
 class TestSetAppSecurityGroupsOperation(TestCase):
@@ -45,9 +45,19 @@ class TestSetAppSecurityGroupsOperation(TestCase):
 
     @staticmethod
     def _init_reservation_model():
-        reservation_context = ReservationContextDetails()
+        reservation_context = ReservationContextDetails(
+            environment_name="",
+            environment_path="",
+            domain="Global",
+            description="",
+            owner_user="",
+            owner_email="",
+            reservation_id="77bf1176-25d2-4dd0-ac58-05f8aee534a5",
+            saved_sandbox_name="",
+            saved_sandbox_id="",
+            running_user="",
+        )
         reservation_model = ReservationModel(reservation_context)
-        reservation_model.reservation_id = "77bf1176-25d2-4dd0-ac58-05f8aee534a5"
         return reservation_model
 
     @staticmethod

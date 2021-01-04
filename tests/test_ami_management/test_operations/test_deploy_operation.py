@@ -1,6 +1,5 @@
 from unittest import TestCase
-
-from mock import MagicMock, Mock, call
+from unittest.mock import MagicMock, Mock, call
 
 from cloudshell.cp.aws.domain.ami_management.operations.deploy_operation import (
     DeployAMIOperation,

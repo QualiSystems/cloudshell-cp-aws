@@ -17,17 +17,15 @@ class AllocateMissingValuesDeviceIndexStrategy(AbstractDeviceIndexStrategy):
         """# noqa
         Allocate device index values to actions with device index and validate all requested device indexes are valid
         :param list[NetworkAction] actions:
-        :return:
         """
-
         # get all SubnetConnection actions
-        subnet_conn_actions = filter(
-            lambda x: isinstance(x.actionParams, ConnectToSubnetParams), actions
+        subnet_conn_actions = set(
+            filter(lambda x: isinstance(x.actionParams, ConnectToSubnetParams), actions)
         )
 
         # get all actions with valid device index (>=0)
-        specific_device_index_actions = filter(
-            lambda x: self._is_vnic_name_valid(x), subnet_conn_actions
+        specific_device_index_actions = set(
+            filter(self._is_vnic_name_valid, subnet_conn_actions)
         )
 
         # validate no duplicate device indexes
@@ -42,9 +40,7 @@ class AllocateMissingValuesDeviceIndexStrategy(AbstractDeviceIndexStrategy):
         )
 
         # get all actions without device index
-        no_device_index_actions = list(
-            set(subnet_conn_actions) - set(specific_device_index_actions)
-        )
+        no_device_index_actions = subnet_conn_actions - specific_device_index_actions
 
         # allocate device index to actions without device index and add to the
         # sorted list

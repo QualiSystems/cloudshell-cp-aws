@@ -1,5 +1,6 @@
+import time
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from cloudshell.cp.aws.domain.services.waiters.instance import InstanceWaiter
 
@@ -63,27 +64,29 @@ class TestInstanceWaiter(TestCase):
         self.assertEqual(res, [instance, inst])
         self.assertTrue(instance.reload.call_count, 2)
 
-    @patch("time.sleep", helper.change_to_stopped)
+    @patch("cloudshell.cp.aws.domain.services.waiters.instance.time.sleep", Mock())
     def test_waiter_multi_with_cancellation(self):
         cancellation_context = Mock()
         helper.change_to_stopped(Mock())
-
-        instance.state["Name"] = InstanceWaiter.RUNNING
-
-        inst = Mock()
-        inst.state = {}
-        inst.state["Name"] = InstanceWaiter.STOPPED
-
-        instances = [instance, inst]
+        inst1 = Mock()
+        inst2 = Mock(state={"Name": InstanceWaiter.STOPPED})
+        p = PropertyMock(
+            side_effect=[
+                {"Name": InstanceWaiter.RUNNING},
+                {"Name": InstanceWaiter.STOPPED},
+            ]
+        )
+        type(inst1).state = p
+        instances = [inst1, inst2]
 
         res = self.instance_waiter.multi_wait(
             instances, InstanceWaiter.STOPPED, cancellation_context
         )
 
-        self.assertEqual(res, [instance, inst])
-        self.assertTrue(instance.reload.call_count, 2)
+        self.assertEqual(res, [inst1, inst2])
+        self.assertTrue(inst1.reload.call_count, 2)
         self.assertTrue(self.cancellation_service.check_if_cancelled.call_count, 2)
-        instance_ids = filter(lambda x: str(x.id), instances)
+        instance_ids = set(filter(lambda x: str(x.id), instances))
         self.cancellation_service.check_if_cancelled.assert_called_with(
             cancellation_context, {"instance_ids": instance_ids}
         )
@@ -96,8 +99,11 @@ class TestInstanceWaiter(TestCase):
             ValueError, self.instance_waiter.multi_wait, [Mock], "blalala"
         )
 
-    @patch("cloudshell.cp.aws.domain.services.waiters.instance.time")
-    def test_wait_status_ok(self, time):
+    @patch(
+        "cloudshell.cp.aws.domain.services.waiters.instance.time",
+        Mock(time=Mock(return_value=time.time())),
+    )
+    def test_wait_status_ok(self):
         # arrange
         def describe_instance_status_handler(*args, **kwargs):
             result = Mock()
@@ -142,8 +148,11 @@ class TestInstanceWaiter(TestCase):
             instance_state["InstanceStatus"]["Status"], self.instance_waiter.STATUS_OK
         )
 
-    @patch("cloudshell.cp.aws.domain.services.waiters.instance.time")
-    def test_wait_status_ok_raises_impaired_status(self, time):
+    @patch(
+        "cloudshell.cp.aws.domain.services.waiters.instance.time",
+        Mock(time=Mock(return_value=time.time())),
+    )
+    def test_wait_status_ok_raises_impaired_status(self):
         # arrange
         def describe_instance_status_handler(*args, **kwargs):
             result = Mock()

@@ -124,7 +124,7 @@ class TestCreateTrafficMirroring(TestCase):
         for a in result["driverRequest"]["actions"]:
             validate(a, REMOVE_SCHEMA)
 
-        create_request = """  # noqa
+        create_request = """
         {
             "driverRequest": {
                                 "actions": [
@@ -152,7 +152,7 @@ class TestCreateTrafficMirroring(TestCase):
                                             ]
                               }
         }
-        """
+        """  # noqa
 
         create_actions2 = json.loads(create_request)
         for a in create_actions2["driverRequest"]["actions"]:

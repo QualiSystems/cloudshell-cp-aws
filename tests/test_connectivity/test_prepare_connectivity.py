@@ -43,7 +43,9 @@ class TestPrepareSandboxInfra(TestCase):
         )
 
     def test_prepare_conn_must_receive_network_action(self):
-        with self.assertRaises(Exception) as error:
+        with self.assertRaises(
+            Exception, msg="Actions list must contain a PrepareCloudInfraAction."
+        ):
             self.prepare_conn.prepare_connectivity(
                 ec2_client=self.ec2_client,
                 ec2_session=self.ec2_session,
@@ -54,10 +56,6 @@ class TestPrepareSandboxInfra(TestCase):
                 cancellation_context=self.cancellation_context,
                 logger=Mock(),
             )
-        self.assertEqual(
-            error.exception.message,
-            "Actions list must contain a PrepareCloudInfraAction.",
-        )
 
     def test_prepare_conn_execute_the_network_action_first(self):
         # Arrage
