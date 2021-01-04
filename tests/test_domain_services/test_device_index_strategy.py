@@ -1,10 +1,11 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock
 
+from cloudshell.cp.core.models import ConnectToSubnetParams, PrepareCloudInfra
+
 from cloudshell.cp.aws.domain.services.strategy.device_index import (
     AllocateMissingValuesDeviceIndexStrategy,
 )
-from cloudshell.cp.core.models import ConnectToSubnetParams, PrepareCloudInfra
 
 
 class TestAllocateMissingValuesDeviceIndexStrategy(TestCase):

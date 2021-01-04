@@ -3,13 +3,14 @@ from typing import List
 
 from retrying import retry
 
+from cloudshell.cp.core.models import ConnectSubnet, ConnectToSubnetParams
+
 from cloudshell.cp.aws.common.retry_helper import retry_if_client_error
 from cloudshell.cp.aws.domain.common.list_helper import first_or_default
 from cloudshell.cp.aws.models.deploy_aws_ec2_ami_instance_resource_model import (
     DeployAWSEc2AMIInstanceResourceModel,
 )
 from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
-from cloudshell.cp.core.models import ConnectSubnet, ConnectToSubnetParams
 
 
 class ElasticIpService:

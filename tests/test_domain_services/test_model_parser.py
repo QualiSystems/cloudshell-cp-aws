@@ -1,16 +1,17 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-from cloudshell.cp.aws.common.converters import convert_to_bool
-from cloudshell.cp.aws.domain.services.parsers.aws_model_parser import AWSModelsParser
-from cloudshell.cp.aws.models.deploy_aws_ec2_ami_instance_resource_model import (
-    DeployAWSEc2AMIInstanceResourceModel,
-)
 from cloudshell.cp.core.drive_request_parser import DriverRequestParser
 from cloudshell.cp.core.models import (
     ConnectToSubnetParams,
     PrepareCloudInfra,
     PrepareSubnetParams,
+)
+
+from cloudshell.cp.aws.common.converters import convert_to_bool
+from cloudshell.cp.aws.domain.services.parsers.aws_model_parser import AWSModelsParser
+from cloudshell.cp.aws.models.deploy_aws_ec2_ami_instance_resource_model import (
+    DeployAWSEc2AMIInstanceResourceModel,
 )
 
 

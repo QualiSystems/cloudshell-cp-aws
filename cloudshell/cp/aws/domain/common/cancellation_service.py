@@ -1,7 +1,8 @@
 from typing import Optional
 
-from cloudshell.cp.aws.domain.common.exceptions import CancellationException
 from cloudshell.shell.core.driver_context import CancellationContext
+
+from cloudshell.cp.aws.domain.common.exceptions import CancellationException
 
 
 class CommandCancellationService:

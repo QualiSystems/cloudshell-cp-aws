@@ -4,8 +4,9 @@ from typing import Optional
 
 from Crypto.PublicKey import RSA
 
-from cloudshell.cp.aws.models.ami_credentials import AMICredentials
 from cloudshell.shell.core.driver_context import CancellationContext
+
+from cloudshell.cp.aws.models.ami_credentials import AMICredentials
 
 
 class InstanceCredentialsService:

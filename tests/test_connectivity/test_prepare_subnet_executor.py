@@ -1,15 +1,16 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-from cloudshell.cp.aws.domain.conncetivity.operations.prepare_subnet_executor import (
-    PrepareSubnetExecutor,
-)
-from cloudshell.cp.aws.domain.services.ec2.tags import TagNames
 from cloudshell.cp.core.models import (
     PrepareCloudInfraParams,
     PrepareSubnet,
     PrepareSubnetParams,
 )
+
+from cloudshell.cp.aws.domain.conncetivity.operations.prepare_subnet_executor import (
+    PrepareSubnetExecutor,
+)
+from cloudshell.cp.aws.domain.services.ec2.tags import TagNames
 
 
 class TestPrepareSandboxInfra(TestCase):

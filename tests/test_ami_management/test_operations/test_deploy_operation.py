@@ -1,16 +1,17 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, call
 
-from cloudshell.cp.aws.domain.ami_management.operations.deploy_operation import (
-    DeployAMIOperation,
-)
-from cloudshell.cp.aws.domain.common.exceptions import CancellationException
-from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
 from cloudshell.cp.core.models import (
     ConnectSubnet,
     ConnectToSubnetParams,
     PrepareCloudInfra,
 )
+
+from cloudshell.cp.aws.domain.ami_management.operations.deploy_operation import (
+    DeployAMIOperation,
+)
+from cloudshell.cp.aws.domain.common.exceptions import CancellationException
+from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
 
 
 class TestDeployOperation(TestCase):
