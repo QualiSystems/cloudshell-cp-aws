@@ -77,7 +77,7 @@ class AutoloadOperation:
         try:
             netaddr.IPNetwork(cidr)
         except netaddr.AddrFormatError:
-            logger.info("CIDR {} is in invalid format", exc_info=1)
+            logger.info(f"CIDR {cidr} is in invalid format", exc_info=True)
             return False
         if "/" not in cidr:
             return False

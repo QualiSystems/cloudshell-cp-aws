@@ -1,8 +1,8 @@
-import binascii
 from base64 import b64decode
 from typing import Optional
 
-from Crypto.PublicKey import RSA
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.serialization.base import load_pem_private_key
 
 from cloudshell.shell.core.driver_context import CancellationContext
 
@@ -46,48 +46,10 @@ class InstanceCredentialsService:
         )
 
     def decrypt_password(self, key_value: str, encrypted_data: str) -> str:
-        rsa_key = RSA.importKey(key_value)
+        private_key = load_pem_private_key(key_value.encode(), None)
         encrypted_data = b64decode(encrypted_data)
-        cipher_text = int(binascii.hexlify(encrypted_data), 16)
-
-        # Decrypt it
-        plaintext = rsa_key.decrypt(cipher_text)
-
-        # This is the annoying part.  long -> byte array
-        decrypted_data = self._long_to_bytes(plaintext)
-        # Now Unpad it
-        return self._pkcs1_unpad(decrypted_data)
-
-    @staticmethod
-    def _pkcs1_unpad(text: bytes) -> Optional[str]:
-        # From http://kfalck.net/2011/03/07/decoding-pkcs1-padding-in-python
-        if len(text) > 0 and text[:1] == b"\x02":
-            # Find end of padding marked by nul
-            pos = text.find(b"\x00")
-            if pos > 0:
-                return text[pos + 1 :].decode()
-        return None
-
-    @staticmethod
-    def _long_to_bytes(val, endianness="big"):
-        # From http://stackoverflow.com/questions/8730927/convert-python-long-int-to-fixed-size-byte-array  # noqa
-        # one (1) hex digit per four (4) bits
-        try:
-            # Python < 2.7 doesn't have bit_length =(
-            width = val.bit_length()
-        except Exception:
-            width = len(val.__hex__()[2:-1]) * 4
-        # unhexlify wants an even multiple of eight (8) bits, but we don't
-        # want more digits than we need (hence the ternary-ish 'or')
-        width += 8 - ((width % 8) or 8)
-        # format width specifier: four (4) bits per hex digit
-        fmt = "%%0%dx" % (width // 4)
-        # prepend zero (0) to the width, to zero-pad the output
-        s = binascii.unhexlify(fmt % val)
-        if endianness == "little":
-            # see http://stackoverflow.com/a/931095/309233
-            s = s[::-1]
-        return s
+        plaintext = private_key.decrypt(encrypted_data, padding.PKCS1v15()).decode()
+        return plaintext
 
     def get_default_linux_credentials(self):
         return AMICredentials("root", "")

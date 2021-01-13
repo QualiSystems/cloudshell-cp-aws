@@ -1,4 +1,3 @@
-from cloudshell.core.context.error_handling_context import ErrorHandlingContext
 from cloudshell.shell.core.session.cloudshell_session import CloudShellSessionContext
 from cloudshell.shell.core.session.logging_session import LoggingSessionContext
 
@@ -24,22 +23,21 @@ class AwsShellContext:
         :rtype AwsShellContextModel:
         """
         with LoggingSessionContext(self.context) as logger:
-            with ErrorHandlingContext(logger):
-                with CloudShellSessionContext(self.context) as cloudshell_session:
-                    with AwsResourceModelContext(
-                        self.context, self.model_parser
-                    ) as aws_ec2_resource_model:
-                        with AwsApiSessionContext(
-                            aws_session_manager=self.aws_session_manager,
+            with CloudShellSessionContext(self.context) as cloudshell_session:
+                with AwsResourceModelContext(
+                    self.context, self.model_parser
+                ) as aws_ec2_resource_model:
+                    with AwsApiSessionContext(
+                        aws_session_manager=self.aws_session_manager,
+                        cloudshell_session=cloudshell_session,
+                        aws_ec2_resource_model=aws_ec2_resource_model,
+                    ) as aws_api:
+                        return AwsShellContextModel(
+                            logger=logger,
                             cloudshell_session=cloudshell_session,
                             aws_ec2_resource_model=aws_ec2_resource_model,
-                        ) as aws_api:
-                            return AwsShellContextModel(
-                                logger=logger,
-                                cloudshell_session=cloudshell_session,
-                                aws_ec2_resource_model=aws_ec2_resource_model,
-                                aws_api=aws_api,
-                            )
+                            aws_api=aws_api,
+                        )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """# noqa
