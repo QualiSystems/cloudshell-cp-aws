@@ -61,32 +61,23 @@ class AWSModelsParser:
         return security_group_models
 
     @staticmethod
-    def convert_to_aws_resource_model(resource):
-        """# noqa
-        :rtype AWSEc2CloudProviderResourceModel:
-        """
-        resource_context = resource.attributes
-        aws_ec2_resource_model = AWSEc2CloudProviderResourceModel()
-        aws_ec2_resource_model.region = resource_context["Region"]
-        aws_ec2_resource_model.max_storage_iops = resource_context["Max Storage IOPS"]
-        aws_ec2_resource_model.max_storage_size = resource_context["Max Storage Size"]
-        aws_ec2_resource_model.aws_secret_access_key = resource_context[
-            "AWS Secret Access Key"
-        ]
-        aws_ec2_resource_model.aws_access_key_id = resource_context["AWS Access Key ID"]
-        aws_ec2_resource_model.key_pairs_location = resource_context[
-            "Keypairs Location"
-        ]
-        aws_ec2_resource_model.aws_management_vpc_id = resource_context[
-            "AWS Mgmt VPC ID"
-        ]
-        aws_ec2_resource_model.aws_management_sg_id = resource_context["AWS Mgmt SG ID"]
-        aws_ec2_resource_model.instance_type = resource_context["Instance Type"]
-        aws_ec2_resource_model.vpc_mode = resource_context["VPC Mode"]
-        aws_ec2_resource_model.vpc_cidr = resource_context["VPC CIDR"]
-        # aws_ec2_resource_model.reserved_ips_in_subnet = resource_context['Reserved IPs in Subnet']  # noqa
-
-        return aws_ec2_resource_model
+    def convert_to_aws_resource_model(resource) -> AWSEc2CloudProviderResourceModel:
+        attrs = resource.attributes
+        shell_name = resource.model
+        name_space = f"{shell_name}."
+        model = AWSEc2CloudProviderResourceModel()
+        model.region = attrs[f"{name_space}Region"]
+        model.max_storage_iops = attrs[f"{name_space}Max Storage IOPS"]
+        model.max_storage_size = attrs[f"{name_space}Max Storage Size"]
+        model.aws_secret_access_key = attrs[f"{name_space}AWS Secret Access Key"]
+        model.aws_access_key_id = attrs[f"{name_space}AWS Access Key ID"]
+        model.key_pairs_location = attrs[f"{name_space}Keypairs Location"]
+        model.aws_management_vpc_id = attrs[f"{name_space}AWS Mgmt VPC ID"]
+        model.aws_management_sg_id = attrs[f"{name_space}AWS Mgmt SG ID"]
+        model.instance_type = attrs[f"{name_space}Instance Type"]
+        model.vpc_mode = attrs[f"{name_space}VPC Mode"]
+        model.vpc_cidr = attrs[f"{name_space}VPC CIDR"]
+        return model
 
     @staticmethod
     def parse_public_ip_options_attribute(attr_value):
@@ -129,7 +120,7 @@ class AWSModelsParser:
         :return: Attribute str value. None if not found.
         :rtype: str
         """
-        for key, val in attributes.iteritems():
+        for key, val in attributes.items():
             last_part = key.split(".")[-1]  # get last part of namespace.
             if name == last_part:
                 return key, val
@@ -194,9 +185,7 @@ class AWSModelsParser:
                 )["vmdetails"]["uid"]
             )
         except Exception as e:
-            raise ValueError(
-                "Could not find an ID of the AWS Deployed instance" + e.message
-            )
+            raise ValueError(f"Could not find an ID of the AWS Deployed instance {e}")
         return deployed_instance_id
 
     @staticmethod
