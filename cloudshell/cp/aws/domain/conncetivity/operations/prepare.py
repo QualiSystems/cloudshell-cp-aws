@@ -363,12 +363,15 @@ class PrepareSandboxInfraOperation:
             ec2_session, reservation_model.reservation_id
         )
         if peerings:
-            active_peerings = filter(
-                lambda x: x.status["Code"] == VpcPeeringConnectionWaiter.ACTIVE,
-                peerings,
+            active_peering = next(
+                filter(
+                    lambda x: x.status["Code"] == VpcPeeringConnectionWaiter.ACTIVE,
+                    peerings,
+                ),
+                None,
             )
-            if active_peerings:
-                vpc_peer_connection_id = active_peerings[0].id
+            if active_peering:
+                vpc_peer_connection_id = active_peering.id
 
         if not vpc_peer_connection_id:
             # create vpc peering connection
