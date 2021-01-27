@@ -314,7 +314,7 @@ class AWSShell:
                 return result
 
         except ClientError as ce:
-            if "AuthorizationHeaderMalformed" in ce.message:
+            if "AuthorizationHeaderMalformed" in str(ce):
                 raise Exception(self.CREDENTIALS_ERROR_MESSAGE)
             raise ce
 
@@ -322,7 +322,7 @@ class AWSShell:
             raise Exception(self.CREDENTIALS_ERROR_MESSAGE)
 
         except ValueError as ve:
-            if "Invalid endpoint" in ve.message:
+            if "Invalid endpoint" in str(ve):
                 raise Exception(
                     "Oops, like you didnt configure Region correctly. Please select "
                     "Region and try again "

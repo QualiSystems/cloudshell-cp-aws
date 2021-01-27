@@ -6,7 +6,9 @@ from cloudshell.cp.aws.domain.services.parsers.aws_model_parser import AWSModels
 
 
 class DeployAWSEc2AMIInstanceResourceModel:
-    __deploymentModel__ = "AWS EC2 Instance"
+    __deploymentModel__ = (
+        "Amazon AWS Cloud Provider Shell 2G.Amazon AWS EC2 Instance 2G"
+    )
 
     def __init__(
         self, attributes
@@ -43,34 +45,44 @@ class DeployAWSEc2AMIInstanceResourceModel:
         self.network_configurations = None  # type: list["NetworkAction"]  # noqa
         self.allow_all_sandbox_traffic = True  # type: bool
 
-        self.aws_ami_id = attributes["AWS AMI Id"]
+        self.aws_ami_id = attributes[f"{self.__deploymentModel__}.AWS AMI Id"]
         self.allow_all_sandbox_traffic = convert_to_bool(
-            attributes["Allow all Sandbox Traffic"]
+            attributes[f"{self.__deploymentModel__}.Allow all Sandbox Traffic"]
         )
-        self.storage_size = attributes["Storage Size"]
-        self.storage_iops = attributes["Storage IOPS"]
-        self.storage_type = attributes["Storage Type"]
-        self.instance_type = attributes["Instance Type"]
-        self.iam_role = attributes["IAM Role Name"]
-        self.root_volume_name = attributes["Root Volume Name"]
-        self.wait_for_ip = convert_to_bool(attributes["Wait for IP"])
+        self.storage_size = attributes[f"{self.__deploymentModel__}.Storage Size"]
+        self.storage_iops = attributes[f"{self.__deploymentModel__}.Storage IOPS"]
+        self.storage_type = attributes[f"{self.__deploymentModel__}.Storage Type"]
+        self.instance_type = attributes[f"{self.__deploymentModel__}.Instance Type"]
+        self.iam_role = attributes[f"{self.__deploymentModel__}.IAM Role Name"]
+        self.root_volume_name = attributes[
+            f"{self.__deploymentModel__}.Root Volume Name"
+        ]
+        self.wait_for_ip = convert_to_bool(
+            attributes[f"{self.__deploymentModel__}.Wait for IP"]
+        )
         self.wait_for_status_check = convert_to_bool(
-            attributes["Wait for Status Check"]
+            attributes[f"{self.__deploymentModel__}.Wait for Status Check"]
         )
-        self.autoload = convert_to_bool(attributes["Autoload"])
-        self.inbound_ports = attributes["Inbound Ports"]
-        self.wait_for_credentials = convert_to_bool(attributes["Wait for Credentials"])
+        self.autoload = convert_to_bool(
+            attributes[f"{self.__deploymentModel__}.Autoload"]
+        )
+        self.inbound_ports = attributes[f"{self.__deploymentModel__}.Inbound Ports"]
+        self.wait_for_credentials = convert_to_bool(
+            attributes[f"{self.__deploymentModel__}.Wait for Credentials"]
+        )
         (
             self.add_public_ip,
             self.allocate_elastic_ip,
         ) = AWSModelsParser.parse_public_ip_options_attribute(
-            attributes["Public IP Options"]
+            attributes[f"{self.__deploymentModel__}.Public IP Options"]
         )
-        self.custom_tags = attributes["Custom Tags"]
-        self.user_data_url = attributes["User Data URL"]
-        self.user_data_run_parameters = attributes["User Data Parameters"]
+        self.custom_tags = attributes[f"{self.__deploymentModel__}.Custom Tags"]
+        self.user_data_url = attributes[f"{self.__deploymentModel__}.User Data URL"]
+        self.user_data_run_parameters = attributes[
+            f"{self.__deploymentModel__}.User Data Parameters"
+        ]
 
-        private_ip_att_value = attributes["Private IP"]
+        private_ip_att_value = attributes[f"{self.__deploymentModel__}.Private IP"]
         self.private_ip_address = self._get_primary_private_ip_address(
             private_ip_att_value
         )
