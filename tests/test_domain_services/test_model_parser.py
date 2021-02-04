@@ -1,3 +1,4 @@
+import json
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -60,137 +61,139 @@ class TestModelParser(TestCase):
 
     def test_convert_to_deployment_resource_model(self):
         # Arrange
-        json = (
-            "{"
-            '"driverRequest": {'
-            '"actions": ['
-            "{"
-            '"actionParams": {'
-            '"appName": "AWS",'
-            '"deployment": {'
-            '"deploymentPath": "AWS EC2 Instance",'
-            '"attributes": ['
-            "{"
-            '"attributeName": "AWS AMI Id",'
-            '"attributeValue": "ami_id",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Custom Tags",'
-            '"attributeValue": "custom_tags",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "User Data URL",'
-            '"attributeValue": "user_data_url",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "User Data Parameters",'
-            '"attributeValue": "user_data_parameters",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Allow all Sandbox Traffic",'
-            '"attributeValue": "True",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Instance Type",'
-            '"attributeValue": "t.nano",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Storage Size",'
-            '"attributeValue": "0",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Storage IOPS",'
-            '"attributeValue": "0",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Storage Type",'
-            '"attributeValue": "storage_type",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Inbound Ports",'
-            '"attributeValue": "80",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Wait for IP",'
-            '"attributeValue": "False",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Wait for Status Check",'
-            '"attributeValue": "True",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Autoload",'
-            '"attributeValue": "False",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Wait for Credentials",'
-            '"attributeValue": "False",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Public IP Options",'
-            '"attributeValue": "Elastic IP",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Root Volume Name",'
-            '"attributeValue": "root_vol_name",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "IAM Role Name",'
-            '"attributeValue": "top secret",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Private IP",'
-            '"attributeValue": "",'
-            '"type": "attribute"'
-            "}"
-            "],"
-            '"type": "deployAppDeploymentInfo"'
-            "},"
-            '"appResource": {'
-            '"attributes": ['
-            "{"
-            '"attributeName": "Password",'
-            '"attributeValue": "3M3u7nkDzxWb0aJ/IZYeWw==",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "Public IP",'
-            '"attributeValue": "",'
-            '"type": "attribute"'
-            "},"
-            "{"
-            '"attributeName": "User",'
-            '"attributeValue": "",'
-            '"type": "attribute"'
-            "}"
-            "],"
-            '"type": "appResourceInfo"'
-            "},"
-            '"type": "deployAppParams"'
-            "},"
-            '"actionId": "f09b5640-1349-440d-b66f-f16a3009369f",'
-            '"type": "deployApp"'
-            "}"
-            "]"
-            "}"
-            "}"
+        d_path = "Amazon AWS Cloud Provider Shell 2G.Amazon AWS EC2 Instance 2G"
+        attributes = [
+            {
+                "attributeName": f"{d_path}.AWS AMI Id",
+                "attributeValue": "ami_id",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Custom Tags",
+                "attributeValue": "custom_tags",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.User Data URL",
+                "attributeValue": "user_data_url",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.User Data Parameters",
+                "attributeValue": "user_data_parameters",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Allow all Sandbox Traffic",
+                "attributeValue": "True",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Instance Type",
+                "attributeValue": "t.nano",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Storage Size",
+                "attributeValue": "0",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Storage IOPS",
+                "attributeValue": "0",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Storage Type",
+                "attributeValue": "storage_type",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Inbound Ports",
+                "attributeValue": "80",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Wait for IP",
+                "attributeValue": "False",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Wait for Status Check",
+                "attributeValue": "True",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Autoload",
+                "attributeValue": "False",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Wait for Credentials",
+                "attributeValue": "False",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Public IP Options",
+                "attributeValue": "Elastic IP",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Root Volume Name",
+                "attributeValue": "root_vol_name",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.IAM Role Name",
+                "attributeValue": "top secret",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Private IP",
+                "attributeValue": "",
+                "type": "attribute",
+            },
+        ]
+        json_str = json.dumps(
+            {
+                "driverRequest": {
+                    "actions": [
+                        {
+                            "actionParams": {
+                                "appName": "AWS",
+                                "deployment": {
+                                    "deploymentPath": d_path,
+                                    "attributes": attributes,
+                                    "type": "deployAppDeploymentInfo",
+                                },
+                                "appResource": {
+                                    "attributes": [
+                                        {
+                                            "attributeName": "Password",
+                                            "attributeValue": "3M3u7nkDzxWb0aJ/IZYeW==",
+                                            "type": "attribute",
+                                        },
+                                        {
+                                            "attributeName": "Public IP",
+                                            "attributeValue": "",
+                                            "type": "attribute",
+                                        },
+                                        {
+                                            "attributeName": "User",
+                                            "attributeValue": "",
+                                            "type": "attribute",
+                                        },
+                                    ],
+                                    "type": "appResourceInfo",
+                                },
+                                "type": "deployAppParams",
+                            },
+                            "actionId": "f09b5640-1349-440d-b66f-f16a3009369f",
+                            "type": "deployApp",
+                        }
+                    ]
+                }
+            }
         )
 
         # Act
@@ -198,7 +201,7 @@ class TestModelParser(TestCase):
         self.request_parser.add_deployment_model(
             deployment_model_cls=DeployAWSEc2AMIInstanceResourceModel
         )
-        model = self.request_parser.convert_driver_request_to_actions(json)[0]
+        model = self.request_parser.convert_driver_request_to_actions(json_str)[0]
 
         # Assert
         self.assertEquals(
