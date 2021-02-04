@@ -1,6 +1,5 @@
 import os
-
-import ConfigParser
+from configparser import ConfigParser
 
 
 class AWSSessionManager:

@@ -65,9 +65,6 @@ class TrafficMirrorOperation:
         :param logging.Logger logger:
         :return:
         """
-
-        success = False
-
         logger.info("Received request to deploy traffic mirroring. ")
 
         action_parameters_string = self._get_action_parameters_string(actions)
@@ -108,8 +105,8 @@ class TrafficMirrorOperation:
             logger.info("Successfully fulfilled traffic mirror request")
 
         except Exception as e:
-            logger.exception("Failed to fulfill traffic mirror request: " + e.message)
-            message = e.message
+            logger.exception(f"Failed to fulfill traffic mirror request: {e}")
+            message = str(e)
             logger.error("Rolling back partial traffic mirror request...")
             TrafficMirrorCleaner.rollback(
                 ec2_client,
@@ -370,9 +367,9 @@ class TrafficMirrorOperation:
                 res.infoMessage = "Found sessions: {}.".format(", ".join(session_ids))
 
         except Exception as e:
-            logger.exception("Failed to remove traffic mirroring: " + e.message)
+            logger.exception(f"Failed to remove traffic mirroring: {e}")
             for res in remove_results:
-                res.errorMessage = "Failed to remove traffic mirroring: " + e.message
+                res.errorMessage = f"Failed to remove traffic mirroring: {e}"
 
         return remove_results
 

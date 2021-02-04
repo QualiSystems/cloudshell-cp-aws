@@ -61,7 +61,6 @@ class InstanceWaiter:
             if instance.state["Name"] != state:
                 self._reload_instance(instance)
                 if time.time() - start_time >= self.timeout:
-                    instance = instance or instances[0]
                     raise TimeoutError(
                         f"Timeout: Waiting for instance to be {state} from"
                     )

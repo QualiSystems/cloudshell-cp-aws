@@ -25,12 +25,12 @@ class SessionNumberService:
                 reservationId=reservation.reservation_id,
             )
         except Exception as e:
-            if "reservation has ended" in e.message:
+            if "reservation has ended" in str(e):
                 raise Exception(
                     "Tried to checkout a session number for traffic mirroring, "
                     "but reservation has already ended"
                 )
-            logger.exception("Could not release session number: " + e.message)
+            logger.exception(f"Could not release session number: {e}")
 
     def checkout(
         self, cloudshell, logger, reservation, source_nic, specific_number=None
@@ -52,14 +52,14 @@ class SessionNumberService:
             return result.Items[0]
 
         except Exception as e:
-            if "reservation has ended" in e.message:
+            if "reservation has ended" in str(e):
                 raise Exception(
                     "Tried to checkout a session number for traffic mirroring, but "
                     "reservation has already ended"
                 )
             else:
                 logger.error(unavailable_msg(source_nic, reservation.reservation_id))
-                logger.error(e.message)
+                logger.error(str(e))
                 raise Exception(unavailable_msg(source_nic, reservation.reservation_id))
 
     @staticmethod

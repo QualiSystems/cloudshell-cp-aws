@@ -45,8 +45,6 @@ class RouteTablesService:
         """# noqa
         :param route_table: RouteTable ec2 object
         :param str target_internet_gateway_id: Id for the route target
-        :param str target_vpc_cidr: CIDR block for the route destination
-        :return:
         """
         route_table.create_route(
             GatewayId=target_internet_gateway_id, DestinationCidrBlock="0.0.0.0/0"
@@ -121,8 +119,7 @@ class RouteTablesService:
     def get_custom_route_tables(self, ec2_session, vpc_id):
         """# noqa
         :param ec2_session: Ec2 Session
-        :param vpc: EC2 VPC instance
-        :return:
+        :param vpc_id: EC2 VPC instance
         """
         main_table = self.get_main_route_table(ec2_session, vpc_id)
         all_tables = self.get_all_route_tables(ec2_session, vpc_id)

@@ -19,10 +19,6 @@ class TrafficMirrorFulfillment:
         self.filter_rules = action.actionParams.filterRules
 
     def _get_mirror_session_name(self):
-        """# noqa
-        :param TrafficMirrorFulfillment fulfillment:
-        :return:
-        """
         return f"{self.session_number}_{self.source_nic_id}_{self.target_nic_id}"
 
 

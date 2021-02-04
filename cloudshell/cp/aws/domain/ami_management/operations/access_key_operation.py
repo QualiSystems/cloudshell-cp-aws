@@ -2,7 +2,6 @@ class GetAccessKeyOperation:
     def __init__(self, key_pair_service):
         """# noqa
         :param KeyPairService key_pair_service:
-        :param S3BucketService s3_service:
         :return:
         """
         self.key_pair_service = key_pair_service

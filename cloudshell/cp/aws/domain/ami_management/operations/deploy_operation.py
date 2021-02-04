@@ -1,6 +1,7 @@
 import traceback
 import uuid
 from multiprocessing import TimeoutError
+from typing import List
 
 from cloudshell.cp.core.models import (
     ConnectSubnet,
@@ -91,7 +92,7 @@ class DeployAMIOperation:
         :param ami_deploy_action: The deploy app.
         :type ami_deploy_action: cloudshell.cp.core.models.DeployApp
         :param network_actions: The network actions.
-        :type network_actions: cloudshell.cp.core.models.ConnectSubnet
+        :type network_actions: list[cloudshell.cp.core.models.ConnectSubnet]
         :param logging.Logger logger:
         :param CancellationContext cancellation_context:
         :return: Deploy Result
@@ -295,11 +296,9 @@ class DeployAMIOperation:
             actionId=network_config_result.action_id, interface=interface_data_json_str
         )
 
-    def _prepare_network_result_models(self, network_actions):
-        """# noqa
-        :type cloudshell.cp.core.models.ConnectSubnet network_actions
-        :rtype: list[DeployNetworkingResultModel]
-        """
+    def _prepare_network_result_models(
+        self, network_actions: List[ConnectSubnet]
+    ) -> List[DeployNetworkingResultModel]:
         network_config_results = []
         if not network_actions:
             network_config_results.append(
@@ -364,7 +363,6 @@ class DeployAMIOperation:
                 bucket_name=key_pair_location,
                 reservation_id=reservation.reservation_id,
             )
-            result = None
             try:
                 result = self.credentials_service.get_windows_credentials(
                     instance=instance,
@@ -490,7 +488,7 @@ class DeployAMIOperation:
         :param ami_deployment_model: The resource model on which the AMI will be deployed on
         :type ami_deployment_model: cloudshell.cp.aws.models.deploy_aws_ec2_ami_instance_resource_model.DeployAWSEc2AMIInstanceResourceModel
         :param network_actions: The network actions.
-        :type network_actions: cloudshell.cp.core.models.ConnectSubnet
+        :type network_actions: list[cloudshell.cp.core.models.ConnectSubnet]
         :param vpc: The reservation VPC
         :param security_group : The security group of the AMI
         :type security_group : securityGroup
@@ -573,7 +571,7 @@ class DeployAMIOperation:
         """# noqa
         :param vpc: The reservation VPC
         :param DeployAWSEc2AMIInstanceResourceModel ami_deployment_model:
-        :param cloudshell.cp.core.models.ConnectSubnet network_actions:
+        :param list[cloudshell.cp.core.models.ConnectSubnet] network_actions:
         :param [str] security_group_ids:
         :param list[DeployNetworkingResultModel] network_config_results: list of network configuration result objects
         :param logging.Logger logger:

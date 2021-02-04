@@ -23,7 +23,7 @@ class ElasticIpService:
         ec2_client,
         instance,
         ami_deployment_model: DeployAWSEc2AMIInstanceResourceModel,
-        network_actions: ConnectSubnet,
+        network_actions: List[ConnectSubnet],
         network_config_results: List[DeployNetworkingResultModel],
         logger: Logger,
     ):

@@ -68,7 +68,7 @@ class TrafficMirrorCleaner:
             logger.info("Completed rollback of traffic mirror request")
 
         except Exception as e:
-            logger.exception("Traffic Mirror Cleanup failed: \n" + e.message)
+            logger.exception(f"Traffic Mirror Cleanup failed: \n{e}")
 
     @staticmethod
     def _release_session_numbers_from_pool(

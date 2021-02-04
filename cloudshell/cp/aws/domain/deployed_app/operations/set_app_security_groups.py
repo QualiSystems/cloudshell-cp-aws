@@ -89,10 +89,8 @@ class SetAppSecurityGroupsOperation:
                 )
             except Exception as ex:
                 message = (
-                    "Setting custom app security rules failed for '{}' "
-                    "with error '{}'.".format(
-                        app_security_group_model.deployed_app.name, ex.message
-                    )
+                    f"Setting custom app security rules failed for "
+                    f"'{app_security_group_model.deployed_app.name}' with error '{ex}'."
                 )
                 action_result = self._create_security_group_action_result(
                     app_name=app_security_group_model.deployed_app.name,

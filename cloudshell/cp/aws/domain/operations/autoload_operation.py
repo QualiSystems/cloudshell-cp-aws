@@ -10,8 +10,7 @@ class AutoloadOperation:
     ):
         """Check that all needed resources are valid and present on the Azure.
 
-        :param cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model.AWSEc2CloudProviderResourceModel  # noqa
-                cloud_provider_model:  instance
+        :param cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model.AWSEc2CloudProviderResourceModel cloud_provider_model:  instance  # noqa
         :param logger: logging.Logger instance
         :return: cloudshell.shell.core.driver_context.AutoLoadDetails instance
         """
