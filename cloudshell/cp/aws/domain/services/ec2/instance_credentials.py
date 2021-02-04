@@ -2,7 +2,7 @@ from base64 import b64decode
 from typing import Optional
 
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.serialization.base import load_pem_private_key
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from cloudshell.shell.core.driver_context import CancellationContext
 

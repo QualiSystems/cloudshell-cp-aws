@@ -1,3 +1,5 @@
+from typing import List
+
 from retrying import retry
 
 
@@ -104,13 +106,8 @@ class TagService:
             self.get_reservation_tag(reservation.reservation_id),
         ]
 
-    def get_custom_tags(self, custom_tags):
-        """# noqa
-        returns the default tags of a resource. Name,reservationId,createdBy
-        :param Dict custom_tags: the tags
-        :type name: dict
-        :return: list[dict]
-        """
+    def get_custom_tags(self, custom_tags: dict) -> List[dict]:
+        """Returns the default tags of a resource. Name,reservationId,createdBy."""
         if custom_tags:
             return [self._get_kvp(k, v) for k, v in custom_tags.items()]
         return []
