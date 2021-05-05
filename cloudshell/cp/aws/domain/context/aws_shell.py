@@ -17,11 +17,8 @@ class AwsShellContext:
         self.aws_session_manager = aws_session_manager
         self.model_parser = AWSModelsParser()
 
-    def __enter__(self):
-        """# noqa
-        Initializes all aws shell context dependencies
-        :rtype AwsShellContextModel:
-        """
+    def __enter__(self) -> "AwsShellContextModel":
+        """Initializes all aws shell context dependencies."""
         with LoggingSessionContext(self.context) as logger:
             with CloudShellSessionContext(self.context) as cloudshell_session:
                 with AwsResourceModelContext(
@@ -56,7 +53,7 @@ class AwsShellContextModel:
         :param logging.Logger logger:
         :param cloudshell.api.cloudshell_api.CloudShellAPISession cloudshell_session:
         :param cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model.AWSEc2CloudProviderResourceModel aws_ec2_resource_model:
-        :param cloudshell.cp.aws.domain.context.aws_api.AwsApiClients aws_api:
+        :param cloudshell.cp.aws.models.aws_api.AwsApiClients aws_api:
         :return:
         """
         self.logger = logger

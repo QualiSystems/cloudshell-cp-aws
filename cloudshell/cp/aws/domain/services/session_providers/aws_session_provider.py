@@ -61,9 +61,9 @@ class AWSSessionProvider:
     @staticmethod
     def _create_aws_session(aws_ec2_data_model, credentials):
         if not credentials:
-            aws_session = boto3.Session(region_name=aws_ec2_data_model.region)
+            aws_session = boto3.session.Session(region_name=aws_ec2_data_model.region)
         else:
-            aws_session = boto3.Session(
+            aws_session = boto3.session.Session(
                 aws_access_key_id=credentials.access_key_id,
                 aws_secret_access_key=credentials.secret_access_key,
                 region_name=aws_ec2_data_model.region,

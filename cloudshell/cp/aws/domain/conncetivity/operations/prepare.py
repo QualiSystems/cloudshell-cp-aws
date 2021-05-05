@@ -1,4 +1,5 @@
 import traceback
+from typing import TYPE_CHECKING, List, Optional
 
 import jsonpickle
 from retrying import retry
@@ -16,9 +17,23 @@ from cloudshell.cp.core.models import (
 from cloudshell.cp.aws.domain.conncetivity.operations.prepare_subnet_executor import (
     PrepareSubnetExecutor,
 )
+from cloudshell.cp.aws.domain.services.ec2.transit_gateway import (
+    get_transit_gateway_cidr_blocks,
+)
 from cloudshell.cp.aws.domain.services.waiters.vpc_peering import (
     VpcPeeringConnectionWaiter,
 )
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
+from cloudshell.cp.aws.models.reservation_model import ReservationModel
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
+    from mypy_boto3_ec2.service_resource import RouteTable
+
+    from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
+        AWSEc2CloudProviderResourceModel,
+    )
+
 
 INVALID_REQUEST_ERROR = "Invalid request: {0}"
 
@@ -88,9 +103,6 @@ class PrepareSandboxInfraOperation:
         :param logging.Logger logger:
         :rtype list[ActionResultBase]
         """
-        if not aws_ec2_datamodel.aws_management_vpc_id:
-            raise ValueError("AWS Mgmt VPC ID attribute must be set!")
-
         logger.info(
             "PrepareSandboxInfra actions: {}".format(
                 ",".join([jsonpickle.encode(a) for a in actions])
@@ -199,16 +211,14 @@ class PrepareSandboxInfraOperation:
         logger.info("PrepareCloudInfra")
 
         # will get cidr form action params
-        cidr = (
-            self._get_vpc_cidr(action, aws_ec2_datamodel, logger)
-            or action.actionParams.cidr
-        )
-        logger.info(f"Received CIDR {cidr} from server")
+        cidr = self._get_vpc_cidr(action, aws_ec2_datamodel, logger)
 
         # will get or create a vpc for the reservation
         self.cancellation_service.check_if_cancelled(cancellation_context)
         logger.info("Get or create existing VPC (no subnets yet)")
-        vpc = self._get_or_create_vpc(cidr, ec2_session, reservation)
+        vpc = self._get_or_create_vpc(cidr, ec2_session, reservation, aws_ec2_datamodel)
+        if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
+            cidr = vpc.cidr_block
 
         # will enable dns for the vpc
         self.cancellation_service.check_if_cancelled(cancellation_context)
@@ -218,23 +228,34 @@ class PrepareSandboxInfraOperation:
         # will get or create an Internet-Gateway (IG) for the vpc
         self.cancellation_service.check_if_cancelled(cancellation_context)
         logger.info("Get or create and attach existing internet gateway")
-        internet_gateway_id = self._create_and_attach_internet_gateway(
-            ec2_session, vpc, reservation
-        )
+        if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
+            internet_gateway_id = self.get_first_internet_gateway_id(vpc)
+            self._create_route_tables_and_connect_gateways(
+                ec2_session,
+                ec2_client,
+                reservation,
+                vpc.id,
+                aws_ec2_datamodel,
+                internet_gateway_id,
+            )
+        else:
+            internet_gateway_id = self._create_and_attach_internet_gateway(
+                ec2_session, vpc, reservation
+            )
 
-        # will try to peer sandbox VPC to mgmt VPC if not exist
-        # note, if vpc_mode == static, will not create peering
-        self._peer_to_mgmt_if_needed(
-            aws_ec2_datamodel,
-            cancellation_context,
-            cidr,
-            ec2_client,
-            ec2_session,
-            internet_gateway_id,
-            logger,
-            reservation,
-            vpc,
-        )
+            # will try to peer sandbox VPC to mgmt VPC if not exist
+            # note, if vpc_mode == static, will not create peering
+            self._peer_to_mgmt_if_needed(
+                aws_ec2_datamodel,
+                cancellation_context,
+                cidr,
+                ec2_client,
+                ec2_session,
+                internet_gateway_id,
+                logger,
+                reservation,
+                vpc,
+            )
 
         # will get or create default Security Group
         self.cancellation_service.check_if_cancelled(cancellation_context)
@@ -244,12 +265,13 @@ class PrepareSandboxInfraOperation:
             reservation=reservation,
             vpc=vpc,
             management_sg_id=aws_ec2_datamodel.aws_management_sg_id,
-            need_management_access=not aws_ec2_datamodel.is_static_vpc_mode,
+            need_management_access=(aws_ec2_datamodel.vpc_mode is VpcMode.DYNAMIC),
         )
         return self._create_prepare_network_result(action, security_groups, vpc)
 
-    def _get_vpc_cidr(self, action, aws_ec2_datamodel, logger):
-        if aws_ec2_datamodel.is_static_vpc_mode and aws_ec2_datamodel.vpc_cidr != "":
+    @staticmethod
+    def _get_vpc_cidr(action, aws_ec2_datamodel, logger):
+        if aws_ec2_datamodel.vpc_mode is VpcMode.STATIC and aws_ec2_datamodel.vpc_cidr:
             cidr = aws_ec2_datamodel.vpc_cidr
             logger.info(
                 f"Decided to use VPC CIDR {cidr} as defined on cloud provider for "
@@ -285,7 +307,7 @@ class PrepareSandboxInfraOperation:
             )
         )
 
-        if not aws_ec2_datamodel.is_static_vpc_mode:
+        if aws_ec2_datamodel.vpc_mode is VpcMode.DYNAMIC:
             logger.info("Create VPC Peering with management vpc")
             self._peer_vpcs(
                 ec2_client=ec2_client,
@@ -296,7 +318,7 @@ class PrepareSandboxInfraOperation:
                 reservation_model=reservation,
                 logger=logger,
             )
-        else:
+        elif aws_ec2_datamodel.vpc_mode is VpcMode.STATIC:
             logger.info(
                 "We are using static VPC mode, not creating VPC peering with "
                 "management vpc"
@@ -429,6 +451,60 @@ class PrepareSandboxInfraOperation:
             ec2_session=ec2_session,
             ec2_client=ec2_client,
         )
+
+    def _create_route_tables_and_connect_gateways(
+        self,
+        ec2_session: "EC2ServiceResource",
+        ec2_client: "EC2Client",
+        reservation: "ReservationModel",
+        vpc_id: str,
+        aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
+        igw_id: Optional[str],
+    ):
+        public_rt = self.vpc_service.get_or_create_public_route_table(
+            ec2_session, reservation, vpc_id
+        )
+        private_rt = self.vpc_service.get_or_create_private_route_table(
+            ec2_session, reservation, vpc_id
+        )
+        self._create_routes_to_tgw(
+            ec2_client, [public_rt, private_rt], aws_ec2_datamodel
+        )
+
+        if igw_id:
+            self._route_public_rt_to_igw(public_rt, reservation, igw_id)
+
+    def _create_routes_to_tgw(
+        self,
+        ec2_client: "EC2Client",
+        route_tables: List["RouteTable"],
+        aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
+    ):
+        tgw_id = aws_ec2_datamodel.tgw_id
+        cidr_blocks = get_transit_gateway_cidr_blocks(ec2_client, tgw_id)
+        cidr_blocks.extend(aws_ec2_datamodel.additional_mgt_networks)
+
+        for route_table in route_tables:
+            for cidr in cidr_blocks:
+                self._route_to_tgw(route_table, cidr, tgw_id)
+
+    def _route_to_tgw(self, route_table: "RouteTable", cidr: str, tgw_id: str):
+        route_tgw = self.route_table_service.find_first_route(
+            route_table, {"transit_gateway_id": tgw_id, "destination_cidr_block": cidr}
+        )
+        if not route_tgw:
+            self.route_table_service.add_route_to_tgw(route_table, tgw_id, cidr)
+
+    def _route_public_rt_to_igw(self, public_rt, reservation, igw_id):
+        route_igw = self.route_table_service.find_first_route(
+            public_rt, {"gateway_id": igw_id}
+        )
+        if not route_igw:
+            self.route_table_service.add_route_to_internet_gateway(
+                route_table=public_rt,
+                target_internet_gateway_id=igw_id,
+            )
+        self.vpc_service.set_public_route_table_tags(public_rt, reservation)
 
     def route_to_internet_gateway(
         self, ec2_session, internet_gateway_id, reservation_model, vpc_id
@@ -603,9 +679,9 @@ class PrepareSandboxInfraOperation:
 
         return security_group
 
-    def _get_or_create_vpc(self, cidr, ec2_session, reservation):
-        vpc = self.vpc_service.find_vpc_for_reservation(
-            ec2_session=ec2_session, reservation_id=reservation.reservation_id
+    def _get_or_create_vpc(self, cidr, ec2_session, reservation, aws_model):
+        vpc = self.vpc_service.get_vpc(
+            ec2_session, reservation.reservation_id, aws_model
         )
         if not vpc:
             vpc = self.vpc_service.create_vpc_for_reservation(
@@ -649,6 +725,11 @@ class PrepareSandboxInfraOperation:
         action_result.errorMessage = f"PrepareSandboxInfra ended with the error: {e}"
         return action_result
 
+    def get_first_internet_gateway_id(self, vpc) -> Optional[str]:
+        all_internet_gateways = self.vpc_service.get_all_internet_gateways(vpc)
+        if len(all_internet_gateways) > 0:
+            return all_internet_gateways[0].id
+
     @retry(stop_max_attempt_number=30, wait_fixed=1000)
     def _create_and_attach_internet_gateway(self, ec2_session, vpc, reservation):
         """# noqa
@@ -658,12 +739,9 @@ class PrepareSandboxInfraOperation:
         :type reservation: cloudshell.cp.aws.models.reservation_model.ReservationModel
         :return:
         """
-
         # check if internet gateway is not already attached
-        all_internet_gateways = self.vpc_service.get_all_internet_gateways(vpc)
-        if len(all_internet_gateways) > 0:
-            return all_internet_gateways[0].id
-
-        return self.vpc_service.create_and_attach_internet_gateway(
-            ec2_session, vpc, reservation
-        )
+        igw_id = self.get_first_internet_gateway_id(vpc)
+        if not igw_id:
+            return self.vpc_service.create_and_attach_internet_gateway(
+                ec2_session, vpc, reservation
+            )

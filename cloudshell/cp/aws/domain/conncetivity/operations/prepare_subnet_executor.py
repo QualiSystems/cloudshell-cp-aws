@@ -2,6 +2,8 @@ import traceback
 
 from cloudshell.cp.core.models import PrepareCloudInfraResult, PrepareSubnet
 
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
+
 
 class PrepareSubnetExecutor:
     SUBNET_RESERVATION = "{0} Reservation: {1}"
@@ -29,12 +31,12 @@ class PrepareSubnetExecutor:
     ):
         """# noqa
         :param CommandCancellationService cancellation_service:
-        :param VPCService vpc_service:
+        :param cloudshell.cp.aws.domain.services.ec2.vpc.VPCService vpc_service:
         :param SubnetService subnet_service:
         :param TagService tag_service:
         :param SubnetWaiter subnet_waiter:
         :param ReservationModel reservation:
-        :param AWSEc2CloudProviderResourceModel aws_ec2_datamodel:
+        :param cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model.AWSEc2CloudProviderResourceModel aws_ec2_datamodel:
         :param CancellationContext cancellation_context:
         :param Logger logger:
         :param ec2_session:
@@ -58,8 +60,8 @@ class PrepareSubnetExecutor:
         action_items = [PrepareSubnetExecutor.ActionItem(a) for a in subnet_actions]
 
         # get vpc and availability_zone
-        vpc = self.vpc_service.find_vpc_for_reservation(
-            ec2_session=self.ec2_session, reservation_id=self.reservation.reservation_id
+        vpc = self.vpc_service.get_vpc(
+            self.ec2_session, self.reservation.reservation_id, self.aws_ec2_datamodel
         )
 
         if not vpc:
@@ -102,9 +104,9 @@ class PrepareSubnetExecutor:
         for item in action_items:
             self._step_set_tags(item)
 
-        # set non-public subnets with private route table
+        # connect route table to the subnet if needed
         for item in action_items:
-            self._step_attach_to_private_route_table(item, vpc)
+            self._step_attach_to_route_table(item, vpc)
 
         return [self._create_result(item) for item in action_items]
 
@@ -189,23 +191,27 @@ class PrepareSubnetExecutor:
         self.tag_service.set_ec2_resource_tags(item.subnet, tags)
 
     @step_wrapper
-    def _step_attach_to_private_route_table(self, item, vpc):
-        if item.action.actionParams.isPublic:
+    def _step_attach_to_route_table(
+        self, item: "PrepareSubnetExecutor.ActionItem", vpc
+    ):
+        if (
+            item.action.actionParams.isPublic
+            and self.aws_ec2_datamodel.vpc_mode is not VpcMode.SHARED
+        ):
             self.logger.info(
                 "Subnet is public - no need to attach private routing table"
             )
-        else:
-            self.logger.info(
-                "Subnet is private - getting and attaching private routing table"
-            )
-            private_route_table = self.vpc_service.get_or_throw_private_route_table(
+        if item.action.actionParams.isPublic:
+            route_table = self.vpc_service.get_or_throw_public_route_table(
                 self.ec2_session, self.reservation, vpc.vpc_id
             )
-            self.subnet_service.set_subnet_route_table(
-                ec2_client=self.ec2_client,
-                subnet_id=item.subnet.subnet_id,
-                route_table_id=private_route_table.route_table_id,
+        else:
+            route_table = self.vpc_service.get_or_throw_private_route_table(
+                self.ec2_session, self.reservation, vpc.vpc_id
             )
+        self.subnet_service.set_subnet_route_table(
+            self.ec2_client, item.subnet.subnet_id, route_table.route_table_id
+        )
 
     def _create_result(self, item):
         action_result = PrepareCloudInfraResult()
@@ -231,7 +237,7 @@ class SubnetActionHelper:
         and also whether to Enable Nat, & Route traffic through the NAT
 
         :param cloudshell.cp.core.models.PrepareSubnetParams prepare_subnet_params:
-        :param AWSEc2CloudProviderResourceModel aws_cp_model:
+        :param cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model.AWSEc2CloudProviderResourceModel aws_cp_model:
         :param Logger logger:
         """
 
@@ -245,7 +251,7 @@ class SubnetActionHelper:
         alias = getattr(prepare_subnet_params, "alias", "Default Subnet")
 
         if (
-            aws_cp_model.is_static_vpc_mode
+            aws_cp_model.vpc_mode is VpcMode.STATIC
             and aws_cp_model.vpc_cidr != ""
             and not is_multi_subnet_mode
         ):

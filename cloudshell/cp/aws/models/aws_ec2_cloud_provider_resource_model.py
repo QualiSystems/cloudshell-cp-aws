@@ -1,27 +1,89 @@
+import ipaddress
+import re
+from dataclasses import dataclass
+from enum import Enum
+from typing import TYPE_CHECKING, List
+
+if TYPE_CHECKING:
+    from cloudshell.shell.core.driver_context import ResourceContextDetails
+
+
+NETWORK_MASK_PATTERN = re.compile(r"\\\d+&")
+
+
+class VpcMode(Enum):
+    DYNAMIC = "Dynamic"
+    STATIC = "Static"
+    SHARED = "Shared"
+
+
+@dataclass
 class AWSEc2CloudProviderResourceModel:
-    def __init__(self):
-        self.aws_management_vpc_id = ""  # type: str
-        self.aws_management_sg_id = ""  # type: str
-        self.key_pairs_location = ""  # type: str
-        self.max_storage_size = ""  # type: int
-        self.max_storage_iops = ""  # type: int
-        self.region = ""  # type : str
-        self.aws_access_key_id = ""  # type: str
-        self.aws_secret_access_key = ""  # type: str
-        self.instance_type = ""  # type: str
-        self.reserved_ips_in_subnet = ""  # type: int
-        self.vpc_mode = ""  # type: str
-        self.vpc_cidr = ""  # type: str
+    region: str
+    aws_management_sg_id: str
+    aws_management_vpc_id: str
+    key_pairs_location: str
+    max_storage_size: int
+    max_storage_iops: int
+    instance_type: str
+    vpc_mode: VpcMode
+    vpc_cidr: str
+    vpc_id: str
+    aws_secret_access_key: str
+    aws_access_key_id: str
+    additional_mgt_networks: List[str]
+    tgw_id: str
 
-    @property
-    def is_static_vpc_mode(self):
-        """Static vpc mode means that we do not try to assign CIDR from quali server.
+    def _validate_vpc_id(self):
+        if self.vpc_mode is VpcMode.SHARED and not self.vpc_id:
+            msg = "You should specify 'VPC ID' for the Shared VPC Mode"
+            raise ValueError(msg)
 
-        but always use the same CIDR
-        as provided in vpc_cidr attribute.
-        the idea is that all sandboxes in associated with this cloud provider, use
-        the same range, same ips, etc
-        since they are not peered, and use private ips, this is not an issue.
-        :return:
-        """
-        return self.vpc_mode.lower() == "static"
+    def _validate_aws_mgt_vpc_id(self):
+        if not self.aws_management_vpc_id:
+            raise ValueError("AWS Mgmt VPC ID attribute must be set")
+
+    def _validate_additional_mgt_networks(self):
+        for network in self.additional_mgt_networks:
+            msg = f"Additional Management Network is not correct {network} - {{}}"
+            try:
+                ipaddress.IPv4Network(network)
+            except ipaddress.AddressValueError as e:
+                raise ValueError(msg.format(e))
+            if not NETWORK_MASK_PATTERN.search(network):
+                raise ValueError(msg.format("it should have network mask"))
+
+    def validate(self):
+        self._validate_aws_mgt_vpc_id()
+        self._validate_vpc_id()
+        self._validate_additional_mgt_networks()
+
+    @classmethod
+    def from_resource(
+        cls, resource: "ResourceContextDetails"
+    ) -> "AWSEc2CloudProviderResourceModel":
+        def _get(attr_name: str):
+            return resource.attributes[f"{resource.model}.{attr_name}"]
+
+        mgt_networks = list(
+            filter(bool, _get("Additional Management Networks").split(","))
+        )
+
+        model = cls(
+            region=_get("Region"),
+            aws_management_sg_id=_get("AWS Mgmt SG ID"),
+            aws_management_vpc_id=_get("AWS Mgmt VPC ID"),
+            key_pairs_location=_get("Keypairs Location"),
+            max_storage_size=int(_get("Max Storage Size")),
+            max_storage_iops=int(_get("Max Storage IOPS")),
+            instance_type=_get("Instance Type"),
+            vpc_mode=VpcMode(_get("VPC Mode")),
+            vpc_cidr=_get("VPC CIDR"),
+            vpc_id=_get("VPC ID"),
+            aws_secret_access_key=_get("AWS Secret Access Key"),
+            aws_access_key_id=_get("AWS Access Key ID"),
+            additional_mgt_networks=mgt_networks,
+            tgw_id=_get("Transit Gateway ID"),
+        )
+        model.validate()
+        return model
