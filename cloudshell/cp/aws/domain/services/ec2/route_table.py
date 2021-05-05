@@ -1,3 +1,12 @@
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2 import EC2ServiceResource
+    from mypy_boto3_ec2.service_resource import RouteTable
+
+    from cloudshell.cp.aws.models.reservation_model import ReservationModel
+
+
 class RouteTablesService:
     def __init__(self, tag_service):
         """# noqa
@@ -5,12 +14,10 @@ class RouteTablesService:
         """
         self.tag_service = tag_service
 
-    def get_all_route_tables(self, ec2_session, vpc_id):
-        """# noqa
-        :param ec2_session: Ec2 Session
-        :param vpc_id:
-        :return:
-        """
+    @staticmethod
+    def get_all_route_tables(
+        ec2_session: "EC2ServiceResource", vpc_id: str
+    ) -> List["RouteTable"]:
         vpc = ec2_session.Vpc(vpc_id)
         return list(vpc.route_tables.all())
 
@@ -48,6 +55,14 @@ class RouteTablesService:
         """
         route_table.create_route(
             GatewayId=target_internet_gateway_id, DestinationCidrBlock="0.0.0.0/0"
+        )
+
+    @staticmethod
+    def add_route_to_tgw(route_table: "RouteTable", tgw_id: str, cidr: str):
+        """Create a route to Transit Gateway in the route table."""
+        route_table.create_route(
+            DestinationCidrBlock=cidr,
+            TransitGatewayId=tgw_id,
         )
 
     def find_first_route(self, route_table, filters):
@@ -126,29 +141,27 @@ class RouteTablesService:
         custom_tables = [t for t in all_tables if t.id != main_table.id]
         return custom_tables
 
-    def delete_table(self, table):
+    @staticmethod
+    def delete_table(table: "RouteTable"):
         table.delete()
         return True
 
-    def create_route_table(self, ec2_session, reservation, vpc_id, table_name):
-        """# noqa
-        :param ec2_session: Ec2 Session
-        :param vpc_id:
-        :return:
-        """
+    def create_route_table(
+        self,
+        ec2_session: "EC2ServiceResource",
+        reservation: "ReservationModel",
+        vpc_id: str,
+        table_name: str,
+    ) -> "RouteTable":
         vpc = ec2_session.Vpc(vpc_id)
         route_table = vpc.create_route_table()
         tags = self.tag_service.get_default_tags(table_name, reservation)
         self.tag_service.set_ec2_resource_tags(route_table, tags)
         return route_table
 
-    def get_route_table(self, ec2_session, vpc_id, table_name):
-        """# noqa
-        :param ec2_session: Ec2 Session
-        :param str vpc_id:
-        :param str table_name:
-        :return:
-        """
+    def get_route_table(
+        self, ec2_session: "EC2ServiceResource", vpc_id: str, table_name: str
+    ) -> Optional["RouteTable"]:
         tables = self.get_all_route_tables(ec2_session, vpc_id)
         for table in tables:
             for tag in table.tags:

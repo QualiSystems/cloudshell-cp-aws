@@ -62,22 +62,7 @@ class AWSModelsParser:
 
     @staticmethod
     def convert_to_aws_resource_model(resource) -> AWSEc2CloudProviderResourceModel:
-        attrs = resource.attributes
-        shell_name = resource.model
-        name_space = f"{shell_name}."
-        model = AWSEc2CloudProviderResourceModel()
-        model.region = attrs[f"{name_space}Region"]
-        model.max_storage_iops = attrs[f"{name_space}Max Storage IOPS"]
-        model.max_storage_size = attrs[f"{name_space}Max Storage Size"]
-        model.aws_secret_access_key = attrs[f"{name_space}AWS Secret Access Key"]
-        model.aws_access_key_id = attrs[f"{name_space}AWS Access Key ID"]
-        model.key_pairs_location = attrs[f"{name_space}Keypairs Location"]
-        model.aws_management_vpc_id = attrs[f"{name_space}AWS Mgmt VPC ID"]
-        model.aws_management_sg_id = attrs[f"{name_space}AWS Mgmt SG ID"]
-        model.instance_type = attrs[f"{name_space}Instance Type"]
-        model.vpc_mode = attrs[f"{name_space}VPC Mode"]
-        model.vpc_cidr = attrs[f"{name_space}VPC CIDR"]
-        return model
+        return AWSEc2CloudProviderResourceModel.from_resource(resource)
 
     @staticmethod
     def parse_public_ip_options_attribute(attr_value):

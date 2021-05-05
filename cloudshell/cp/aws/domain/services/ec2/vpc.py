@@ -1,4 +1,5 @@
 import traceback
+from typing import TYPE_CHECKING, Optional
 
 from retrying import retry
 
@@ -7,6 +8,16 @@ from cloudshell.cp.aws.domain.common.list_helper import index_of
 from cloudshell.cp.aws.domain.conncetivity.operations.traffic_mirror_cleaner import (
     TrafficMirrorCleaner,
 )
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2 import EC2ServiceResource
+    from mypy_boto3_ec2.service_resource import RouteTable, Vpc
+
+    from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
+        AWSEc2CloudProviderResourceModel,
+    )
+    from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
 class VPCService:
@@ -14,6 +25,8 @@ class VPCService:
     SUBNET_RESERVATION = "{0} Reservation: {1}"
     MAIN_ROUTE_TABLE_RESERVATION = "Main RoutingTable Reservation: {0}"
     PRIVATE_ROUTE_TABLE_RESERVATION = "Private RoutingTable Reservation: {0}"
+    # RT for public subnets in Shared VPC
+    PUBLIC_ROUTE_TABLE_RESERVATION = "Public RoutingTable Reservation: {}"
     PEERING_CONNECTION = "Peering connection for {0} with management vpc"
 
     def __init__(
@@ -134,6 +147,36 @@ class VPCService:
             )
         return route_table
 
+    def get_or_create_public_route_table(
+        self,
+        ec2_session: "EC2ServiceResource",
+        reservation: "ReservationModel",
+        vpc_id: str,
+    ) -> "RouteTable":
+        name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation.reservation_id)
+        route_table = self.route_table_service.get_route_table(
+            ec2_session, vpc_id, name
+        )
+        if not route_table:
+            route_table = self.route_table_service.create_route_table(
+                ec2_session, reservation, vpc_id, name
+            )
+        return route_table
+
+    def get_or_throw_public_route_table(
+        self,
+        ec2_session: "EC2ServiceResource",
+        reservation: "ReservationModel",
+        vpc_id: str,
+    ) -> "RouteTable":
+        name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation.reservation_id)
+        route_table = self.route_table_service.get_route_table(
+            ec2_session, vpc_id, name
+        )
+        if not route_table:
+            raise ValueError("Routing table for public subnet was not found")
+        return route_table
+
     def find_vpc_for_reservation(self, ec2_session, reservation_id):
         filters = [
             {
@@ -151,6 +194,21 @@ class VPCService:
             raise ValueError("Too many vpcs for the reservation")
 
         return vpcs[0]
+
+    def get_vpc(
+        self,
+        ec2_session: "EC2ServiceResource",
+        reservation_id: str,
+        aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
+    ) -> Optional["Vpc"]:
+        if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
+            return self.get_vpc_by_id(ec2_session, aws_ec2_datamodel.vpc_id)
+        else:
+            return self.find_vpc_for_reservation(ec2_session, reservation_id)
+
+    @staticmethod
+    def get_vpc_by_id(ec2_session: "EC2ServiceResource", vpc_id: str) -> "Vpc":
+        return ec2_session.Vpc(vpc_id)
 
     def peer_vpcs(self, ec2_session, vpc_id1, vpc_id2, reservation_model, logger):
         """# noqa
@@ -401,6 +459,13 @@ class VPCService:
         )
         tags = self.tag_service.get_default_tags(table_name, reservation)
         self.tag_service.set_ec2_resource_tags(main_route_table, tags)
+
+    def set_public_route_table_tags(
+        self, public_rt: "RouteTable", reservation: "ReservationModel"
+    ):
+        name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation.reservation_id)
+        tags = self.tag_service.get_default_tags(name, reservation)
+        self.tag_service.set_ec2_resource_tags(public_rt, tags)
 
     def get_active_vpcs_count(self, ec2_client, logger):
         result = None
