@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, List
 
 from cloudshell.cp.core.models import CleanupNetwork
 
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
+
 if TYPE_CHECKING:
-    from contextlib import contextmanager
     from logging import Logger
 
     from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
@@ -16,7 +18,6 @@ if TYPE_CHECKING:
     from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
     from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
         AWSEc2CloudProviderResourceModel,
-        VpcMode,
     )
 
 
@@ -63,7 +64,7 @@ class CleanupSandboxInfraBaseStrategy(ABC):
         self.remove_peerings(vpc)
         self.remove_blackhole_routes_mgt_vpc()
         self.remove_custom_route_tables(vpc)
-        self.remove_traffic_mirror_elements(vpc)
+        self.remove_traffic_mirror_elements()
         self.remove_vpc(vpc)
 
         if self._cleanup_exceptions:
