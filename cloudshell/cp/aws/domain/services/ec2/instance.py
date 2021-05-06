@@ -1,11 +1,17 @@
+from typing import TYPE_CHECKING, List
+
 from cloudshell.cp.aws.common import retry_helper
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2.service_resource import Instance, Vpc
+
+    from cloudshell.cp.aws.domain.services.ec2.tags import TagService
 
 
 class InstanceService:
-    def __init__(self, tags_creator_service, instance_waiter):
+    def __init__(self, tags_creator_service: "TagService", instance_waiter):
         """# noqa
         :param tags_creator_service: Tags Service
-        :type tags_creator_service: cloudshell.cp.aws.domain.services.tags.TagService
         :param instance_waiter: Instance Waiter
         :type instance_waiter: cloudshell.cp.aws.domain.services.waiters.instance.InstanceWaiter
         """
@@ -127,3 +133,13 @@ class InstanceService:
             raise Exception("Can't perform action. EC2 instance was terminated/removed")
 
         return instance
+
+    @staticmethod
+    def get_all_instances(vpc: "Vpc") -> List["Instance"]:
+        return list(vpc.instances.all())
+
+    def get_instances_for_reservation(
+        self, vpc: "Vpc", reservation_id: str
+    ) -> List["Instance"]:
+        tag = self.tags_creator_service.get_reservation_tag(reservation_id)
+        return list(filter(lambda i: tag in i.tags, self.get_all_instances(vpc)))

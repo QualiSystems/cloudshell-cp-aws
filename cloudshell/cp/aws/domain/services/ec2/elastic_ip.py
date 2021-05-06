@@ -32,9 +32,8 @@ class ElasticIpService:
 
         if self._is_single_subnet_mode(network_actions):
             elastic_ip = self.allocate_elastic_address(ec2_client=ec2_client)
-            network_config_results[
-                0
-            ].public_ip = elastic_ip  # set elastic ip data in deploy result
+            # set elastic ip data in deploy result
+            network_config_results[0].public_ip = elastic_ip
             network_config_results[0].is_elastic_ip = True
             self.associate_elastic_ip_to_instance(
                 ec2_session=ec2_session, instance=instance, elastic_ip=elastic_ip
