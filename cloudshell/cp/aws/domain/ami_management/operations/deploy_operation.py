@@ -1,7 +1,7 @@
 import traceback
 import uuid
 from multiprocessing import TimeoutError
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from cloudshell.cp.core.models import (
     ConnectSubnet,
@@ -20,6 +20,15 @@ from cloudshell.cp.aws.domain.services.parsers.port_group_attribute_parser impor
 from cloudshell.cp.aws.models.ami_deployment_model import AMIDeploymentModel
 from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
 
+if TYPE_CHECKING:
+    from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
+    from cloudshell.cp.aws.domain.services.strategy.device_index import (
+        AbstractDeviceIndexStrategy,
+    )
+    from cloudshell.cp.aws.models.deploy_aws_ec2_ami_instance_resource_model import (
+        DeployAWSEc2AMIInstanceResourceModel,
+    )
+
 
 class DeployAMIOperation:
     MAX_IO1_IOPS = 20000
@@ -30,13 +39,13 @@ class DeployAMIOperation:
         ami_credential_service,
         security_group_service,
         tag_service,
-        vpc_service,
+        vpc_service: "VPCService",
         key_pair_service,
         subnet_service,
         elastic_ip_service,
         network_interface_service,
         cancellation_service,
-        device_index_strategy,
+        device_index_strategy: "AbstractDeviceIndexStrategy",
         vm_details_provider,
     ):
         """# noqa
@@ -98,9 +107,11 @@ class DeployAMIOperation:
         :return: Deploy Result
         :rtype: list[RequestActionBase]
         """
-        ami_deployment_model = ami_deploy_action.actionParams.deployment.customModel
-        vpc = self.vpc_service.find_vpc_for_reservation(
-            ec2_session=ec2_session, reservation_id=reservation.reservation_id
+        ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel" = (  # noqa
+            ami_deploy_action.actionParams.deployment.customModel
+        )
+        vpc = self.vpc_service.get_vpc(
+            ec2_session, reservation.reservation_id, aws_ec2_cp_resource_model
         )
         if not vpc:
             raise ValueError("VPC is not set for this reservation")
@@ -238,10 +249,9 @@ class DeployAMIOperation:
     ):
         """# noqa
         :param DeployAWSEc2AMIInstanceResourceModel ami_deployment_model:
-        :param cloudshell.cp.core.models.ConnectSubnet network_actions:
+        :param list[cloudshell.cp.core.models.ConnectSubnet] network_actions:
         :param logging.Logger logger:
         """
-
         if (
             ami_deployment_model.add_public_ip
             or ami_deployment_model.allocate_elastic_ip
@@ -409,7 +419,12 @@ class DeployAMIOperation:
         return [tag["Value"] for tag in result.tags if tag["Key"] == "Name"][0]
 
     def _create_security_group_for_instance(
-        self, ami_deployment_model, ec2_session, reservation, vpc, logger
+        self,
+        ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel",
+        ec2_session,
+        reservation,
+        vpc,
+        logger,
     ):
         if (
             not ami_deployment_model.inbound_ports

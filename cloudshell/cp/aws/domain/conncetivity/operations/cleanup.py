@@ -150,13 +150,17 @@ class CleanupSandboxInfraBaseStrategy(ABC):
     def _remove_custom_route_tables(self, vpc: "Vpc"):
         raise NotImplementedError
 
-    def remove_traffic_mirror_elements(self, vpc: "Vpc"):
+    def remove_traffic_mirror_elements(self):
         with self.save_exception_context():
-            self._remove_traffic_mirror_elements(vpc)
+            self._remove_traffic_mirror_elements()
 
-    @abstractmethod
-    def _remove_traffic_mirror_elements(self, vpc: "Vpc"):
-        raise NotImplementedError
+    def _remove_traffic_mirror_elements(self):
+        self.vpc_service.delete_traffic_mirror_elements(
+            self.ec2_client,
+            self.traffic_mirror_service,
+            self.reservation_id,
+            self.logger,
+        )
 
     def remove_vpc(self, vpc: "Vpc"):
         with self.save_exception_context():
@@ -201,14 +205,6 @@ class CleanupSandboxInfraDynamicStaticVpcStrategy(CleanupSandboxInfraBaseStrateg
     def _remove_custom_route_tables(self, vpc: "Vpc"):
         self.vpc_service.remove_custom_route_tables(self.ec2_session, vpc)
 
-    def _remove_traffic_mirror_elements(self, vpc: "Vpc"):
-        self.vpc_service.delete_traffic_mirror_elements(
-            self.ec2_client,
-            self.traffic_mirror_service,
-            self.reservation_id,
-            self.logger,
-        )
-
     def _remove_vpc(self, vpc: "Vpc"):
         self.vpc_service.delete_vpc(vpc)
 
@@ -220,8 +216,10 @@ class CleanupSandboxInfraSharedVpcStrategy(CleanupSandboxInfraBaseStrategy):
         )
 
     def _remove_instances(self, vpc: "Vpc"):
-        # todo
-        pass
+        inst_s = self.vpc_service.instance_service
+        inst_s.terminate_instances(
+            inst_s.get_instances_for_reservation(vpc, self.reservation_id)
+        )
 
     def _remove_igw(self, vpc: "Vpc"):
         """In a Shared VPC we do not create/remove IGW."""
@@ -274,10 +272,6 @@ class CleanupSandboxInfraSharedVpcStrategy(CleanupSandboxInfraBaseStrategy):
                 self.route_table_service.delete_table(public_rt)
         except Exception as e:
             self._cleanup_exceptions.append(e)
-
-    def _remove_traffic_mirror_elements(self, vpc: "Vpc"):
-        # todo
-        pass
 
     def _remove_vpc(self, vpc: "Vpc"):
         """In a Shared VPC we do not create the VPC."""
