@@ -1,5 +1,5 @@
 import traceback
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from retrying import retry
 
@@ -12,7 +12,7 @@ from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMo
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import EC2ServiceResource
-    from mypy_boto3_ec2.service_resource import RouteTable, Vpc
+    from mypy_boto3_ec2.service_resource import RouteTable, Subnet, Vpc
 
     from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
         AWSEc2CloudProviderResourceModel,
@@ -111,73 +111,55 @@ class VPCService:
             reservation=reservation,
         )
 
-    def get_or_throw_private_route_table(self, ec2_session, reservation, vpc_id):
-        """# noqa
-        :param ec2_session:
-        :param reservation:
-        :param vpc_id:
-        :return:
-        """
-        route_table_name = self.PRIVATE_ROUTE_TABLE_RESERVATION.format(
-            reservation.reservation_id
-        )
-        route_table = self.route_table_service.get_route_table(
-            ec2_session, vpc_id, route_table_name
-        )
+    def get_or_throw_private_route_table(
+        self, vpc: "Vpc", reservation_id: str
+    ) -> "RouteTable":
+        route_table_name = self.PRIVATE_ROUTE_TABLE_RESERVATION.format(reservation_id)
+        route_table = self.route_table_service.get_route_table(vpc, route_table_name)
         if not route_table:
             raise ValueError("Routing table for non-public subnet was not found")
         return route_table
 
-    def get_or_create_private_route_table(self, ec2_session, reservation, vpc_id):
-        """# noqa
-        :param ec2_session:
-        :param reservation:
-        :param vpc_id:
-        :return:
-        """
+    def get_or_create_private_route_table(
+        self, vpc: "Vpc", reservation: "ReservationModel"
+    ) -> "RouteTable":
         route_table_name = self.PRIVATE_ROUTE_TABLE_RESERVATION.format(
             reservation.reservation_id
         )
-        route_table = self.route_table_service.get_route_table(
-            ec2_session, vpc_id, route_table_name
-        )
+        route_table = self.route_table_service.get_route_table(vpc, route_table_name)
         if not route_table:
             route_table = self.route_table_service.create_route_table(
-                ec2_session, reservation, vpc_id, route_table_name
+                vpc, reservation, route_table_name
             )
         return route_table
 
     def get_or_create_public_route_table(
         self,
-        ec2_session: "EC2ServiceResource",
+        vpc: "Vpc",
         reservation: "ReservationModel",
-        vpc_id: str,
     ) -> "RouteTable":
         name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation.reservation_id)
-        route_table = self.route_table_service.get_route_table(
-            ec2_session, vpc_id, name
-        )
+        route_table = self.route_table_service.get_route_table(vpc, name)
         if not route_table:
             route_table = self.route_table_service.create_route_table(
-                ec2_session, reservation, vpc_id, name
+                vpc, reservation, name
             )
         return route_table
 
     def get_or_throw_public_route_table(
         self,
-        ec2_session: "EC2ServiceResource",
-        reservation: "ReservationModel",
-        vpc_id: str,
+        vpc: "Vpc",
+        reservation_id: str,
     ) -> "RouteTable":
-        name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation.reservation_id)
-        route_table = self.route_table_service.get_route_table(
-            ec2_session, vpc_id, name
-        )
+        name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation_id)
+        route_table = self.route_table_service.get_route_table(vpc, name)
         if not route_table:
             raise ValueError("Routing table for public subnet was not found")
         return route_table
 
-    def find_vpc_for_reservation(self, ec2_session, reservation_id):
+    def find_vpc_for_reservation(
+        self, ec2_session: "EC2ServiceResource", reservation_id: str
+    ) -> Optional["Vpc"]:
         filters = [
             {
                 "Name": "tag:Name",
@@ -509,3 +491,13 @@ class VPCService:
             logger.exception(
                 "Failed to cleanup traffic mirror elements during reservation cleanup"
             )
+
+    @staticmethod
+    def find_subnets_by_reservation_id(
+        vpc: "Vpc", reservation_id: str
+    ) -> List["Subnet"]:
+        return list(
+            vpc.subnets.filter(
+                Filters=[{"Name": "tag:ReservationId", "Values": [reservation_id]}]
+            )
+        )

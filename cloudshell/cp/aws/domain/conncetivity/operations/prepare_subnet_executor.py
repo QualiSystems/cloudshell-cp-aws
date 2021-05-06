@@ -1,8 +1,28 @@
 import traceback
+from typing import TYPE_CHECKING
 
 from cloudshell.cp.core.models import PrepareCloudInfraResult, PrepareSubnet
 
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
+
+if TYPE_CHECKING:
+    from logging import Logger
+
+    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
+
+    from cloudshell.shell.core.driver_context import CancellationContext
+
+    from cloudshell.cp.aws.domain.common.cancellation_service import (
+        CommandCancellationService,
+    )
+    from cloudshell.cp.aws.domain.services.ec2.subnet import SubnetService
+    from cloudshell.cp.aws.domain.services.ec2.tags import TagService
+    from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
+    from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
+    from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
+        AWSEc2CloudProviderResourceModel,
+    )
+    from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
 class PrepareSubnetExecutor:
@@ -17,31 +37,18 @@ class PrepareSubnetExecutor:
 
     def __init__(
         self,
-        cancellation_service,
-        vpc_service,
-        subnet_service,
-        tag_service,
-        subnet_waiter,
-        reservation,
-        aws_ec2_datamodel,
-        cancellation_context,
-        logger,
-        ec2_session,
-        ec2_client,
+        cancellation_service: "CommandCancellationService",
+        vpc_service: "VPCService",
+        subnet_service: "SubnetService",
+        tag_service: "TagService",
+        subnet_waiter: "SubnetWaiter",
+        reservation: "ReservationModel",
+        aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
+        cancellation_context: "CancellationContext",
+        logger: "Logger",
+        ec2_session: "EC2ServiceResource",
+        ec2_client: "EC2Client",
     ):
-        """# noqa
-        :param CommandCancellationService cancellation_service:
-        :param cloudshell.cp.aws.domain.services.ec2.vpc.VPCService vpc_service:
-        :param SubnetService subnet_service:
-        :param TagService tag_service:
-        :param SubnetWaiter subnet_waiter:
-        :param ReservationModel reservation:
-        :param cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model.AWSEc2CloudProviderResourceModel aws_ec2_datamodel:
-        :param CancellationContext cancellation_context:
-        :param Logger logger:
-        :param ec2_session:
-        :param ec2_client:
-        """
         self.ec2_client = ec2_client
         self.ec2_session = ec2_session
         self.logger = logger
@@ -203,11 +210,11 @@ class PrepareSubnetExecutor:
             )
         if item.action.actionParams.isPublic:
             route_table = self.vpc_service.get_or_throw_public_route_table(
-                self.ec2_session, self.reservation, vpc.vpc_id
+                vpc, self.reservation.reservation_id
             )
         else:
             route_table = self.vpc_service.get_or_throw_private_route_table(
-                self.ec2_session, self.reservation, vpc.vpc_id
+                vpc, self.reservation.reservation_id
             )
         self.subnet_service.set_subnet_route_table(
             self.ec2_client, item.subnet.subnet_id, route_table.route_table_id

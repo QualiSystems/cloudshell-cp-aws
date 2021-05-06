@@ -1,21 +1,299 @@
-import traceback
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, List
 
 from cloudshell.cp.core.models import CleanupNetwork
 
+if TYPE_CHECKING:
+    from contextlib import contextmanager
+    from logging import Logger
+
+    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
+    from mypy_boto3_ec2.service_resource import Vpc
+
+    from cloudshell.cp.aws.domain.services.ec2.keypair import KeyPairService
+    from cloudshell.cp.aws.domain.services.ec2.mirroring import TrafficMirrorService
+    from cloudshell.cp.aws.domain.services.ec2.route_table import RouteTablesService
+    from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
+    from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
+        AWSEc2CloudProviderResourceModel,
+        VpcMode,
+    )
+
+
+class CleanupSandboxInfraException(Exception):
+    pass
+
+
+class CleanupSandboxInfraBaseStrategy(ABC):
+    def __init__(
+        self,
+        vpc_service: "VPCService",
+        key_pair_service: "KeyPairService",
+        route_table_service: "RouteTablesService",
+        traffic_mirror_service: "TrafficMirrorService",
+        ec2_client: "EC2Client",
+        ec2_session: "EC2ServiceResource",
+        s3_session,
+        aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
+        reservation_id: str,
+        actions: list,
+        logger: "Logger",
+    ):
+        self.vpc_service = vpc_service
+        self.key_pair_service = key_pair_service
+        self.route_table_service = route_table_service
+        self.traffic_mirror_service = traffic_mirror_service
+        self.ec2_client = ec2_client
+        self.ec2_session = ec2_session
+        self.s3_session = s3_session
+        self.aws_ec2_datamodel = aws_ec2_datamodel
+        self.reservation_id = reservation_id
+        self.actions = actions
+        self.logger = logger
+        self._cleanup_exceptions: List[Exception] = []
+
+    def cleanup(self):
+        self.remove_keypair()
+
+        vpc = self.get_vpc()
+        self.remove_instances(vpc)
+        self.remove_igw(vpc)
+        self.remove_security_groups(vpc)
+        self.remove_subnets(vpc)
+        self.remove_peerings(vpc)
+        self.remove_blackhole_routes_mgt_vpc()
+        self.remove_custom_route_tables(vpc)
+        self.remove_traffic_mirror_elements(vpc)
+        self.remove_vpc(vpc)
+
+        if self._cleanup_exceptions:
+            raise CleanupSandboxInfraException(self._cleanup_exceptions)
+
+    @contextmanager
+    def save_exception_context(self):
+        try:
+            yield
+        except Exception as e:
+            self.logger.exception(e)
+            self._cleanup_exceptions.append(e)
+
+    def remove_keypair(self):
+        self.logger.info("Removing private key (pem file) from s3")
+        self.key_pair_service.remove_key_pair_for_reservation_in_s3(
+            self.s3_session,
+            self.aws_ec2_datamodel.key_pairs_location,
+            self.reservation_id,
+        )
+        self.logger.info("Removing key pair from ec2")
+        self.key_pair_service.remove_key_pair_for_reservation_in_ec2(
+            self.ec2_session, self.reservation_id
+        )
+
+    @abstractmethod
+    def get_vpc(self) -> "Vpc":
+        raise NotImplementedError
+
+    def remove_instances(self, vpc: "Vpc"):
+        self.logger.info("Removing instances")
+        with self.save_exception_context():
+            self._remove_instances(vpc)
+
+    @abstractmethod
+    def _remove_instances(self, vpc: "Vpc"):
+        raise NotImplementedError
+
+    def remove_igw(self, vpc: "Vpc"):
+        with self.save_exception_context():
+            self._remove_igw(vpc)
+
+    @abstractmethod
+    def _remove_igw(self, vpc: "Vpc"):
+        raise NotImplementedError
+
+    def remove_security_groups(self, vpc: "Vpc"):
+        with self.save_exception_context():
+            self._remove_security_groups(vpc)
+
+    @abstractmethod
+    def _remove_security_groups(self, vpc: "Vpc"):
+        raise NotImplementedError
+
+    def remove_subnets(self, vpc: "Vpc"):
+        with self.save_exception_context():
+            self._remove_subnets(vpc)
+
+    @abstractmethod
+    def _remove_subnets(self, vpc: "Vpc"):
+        raise NotImplementedError
+
+    def remove_peerings(self, vpc: "Vpc"):
+        with self.save_exception_context():
+            self._remove_peerings(vpc)
+
+    @abstractmethod
+    def _remove_peerings(self, vpc: "Vpc"):
+        raise NotImplementedError
+
+    def remove_blackhole_routes_mgt_vpc(self):
+        with self.save_exception_context():
+            self._remove_blackhole_routes_mgt_vpc()
+
+    @abstractmethod
+    def _remove_blackhole_routes_mgt_vpc(self):
+        raise NotImplementedError
+
+    def remove_custom_route_tables(self, vpc: "Vpc"):
+        with self.save_exception_context():
+            self._remove_custom_route_tables(vpc)
+
+    @abstractmethod
+    def _remove_custom_route_tables(self, vpc: "Vpc"):
+        raise NotImplementedError
+
+    def remove_traffic_mirror_elements(self, vpc: "Vpc"):
+        with self.save_exception_context():
+            self._remove_traffic_mirror_elements(vpc)
+
+    @abstractmethod
+    def _remove_traffic_mirror_elements(self, vpc: "Vpc"):
+        raise NotImplementedError
+
+    def remove_vpc(self, vpc: "Vpc"):
+        with self.save_exception_context():
+            self._remove_vpc(vpc)
+
+    @abstractmethod
+    def _remove_vpc(self, vpc: "Vpc"):
+        raise NotImplementedError
+
+
+class CleanupSandboxInfraDynamicStaticVpcStrategy(CleanupSandboxInfraBaseStrategy):
+    def get_vpc(self) -> "Vpc":
+        vpc = self.vpc_service.find_vpc_for_reservation(
+            self.ec2_session, self.reservation_id
+        )
+        if not vpc:
+            raise CleanupSandboxInfraException("No VPC was created for the reservation")
+        return vpc
+
+    def _remove_instances(self, vpc: "Vpc"):
+        self.vpc_service.delete_all_instances(vpc)
+
+    def _remove_igw(self, vpc: "Vpc"):
+        self.vpc_service.remove_all_internet_gateways(vpc)
+
+    def _remove_security_groups(self, vpc: "Vpc"):
+        self.vpc_service.remove_all_security_groups(vpc, self.reservation_id)
+
+    def _remove_subnets(self, vpc: "Vpc"):
+        self.vpc_service.remove_all_subnets(vpc)
+
+    def _remove_peerings(self, vpc: "Vpc"):
+        self.vpc_service.remove_all_peering(vpc)
+
+    def _remove_blackhole_routes_mgt_vpc(self):
+        rts = self.route_table_service.get_all_route_tables(
+            self.ec2_session, self.aws_ec2_datamodel.aws_management_vpc_id
+        )
+        for rt in rts:
+            self.route_table_service.delete_blackhole_routes(rt, self.ec2_client)
+
+    def _remove_custom_route_tables(self, vpc: "Vpc"):
+        self.vpc_service.remove_custom_route_tables(self.ec2_session, vpc)
+
+    def _remove_traffic_mirror_elements(self, vpc: "Vpc"):
+        self.vpc_service.delete_traffic_mirror_elements(
+            self.ec2_client,
+            self.traffic_mirror_service,
+            self.reservation_id,
+            self.logger,
+        )
+
+    def _remove_vpc(self, vpc: "Vpc"):
+        self.vpc_service.delete_vpc(vpc)
+
+
+class CleanupSandboxInfraSharedVpcStrategy(CleanupSandboxInfraBaseStrategy):
+    def get_vpc(self) -> "Vpc":
+        return self.vpc_service.get_vpc_by_id(
+            self.ec2_session, self.aws_ec2_datamodel.vpc_id
+        )
+
+    def _remove_instances(self, vpc: "Vpc"):
+        # todo
+        pass
+
+    def _remove_igw(self, vpc: "Vpc"):
+        """In a Shared VPC we do not create/remove IGW."""
+        pass
+
+    def _remove_security_groups(self, vpc: "Vpc"):
+        sg_service = self.vpc_service.sg_service
+        for sg_name in sg_service.get_sandbox_security_group_names(self.reservation_id):
+            try:
+                sg = sg_service.get_security_group_by_name(vpc, sg_name)
+                sg_service.delete_security_group(sg)
+            except Exception as e:
+                self._cleanup_exceptions.append(e)
+
+    def _remove_subnets(self, vpc: "Vpc"):
+        for subnet in self.vpc_service.find_subnets_by_reservation_id(
+            vpc, self.reservation_id
+        ):
+            self.vpc_service.subnet_service.delete_subnet(subnet)
+
+    def _remove_peerings(self, vpc: "Vpc"):
+        """In a Shared VPC we do not create peering connections."""
+        pass
+
+    def _remove_blackhole_routes_mgt_vpc(self):
+        """In a Shared VPC we do not create routes to Management VPS."""
+        pass
+
+    def _remove_custom_route_tables(self, vpc: "Vpc"):
+        try:
+            try:
+                private_rt = self.vpc_service.get_or_throw_private_route_table(
+                    vpc, self.reservation_id
+                )
+            except ValueError:
+                pass
+            else:
+                self.route_table_service.delete_table(private_rt)
+        except Exception as e:
+            self._cleanup_exceptions.append(e)
+
+        try:
+            try:
+                public_rt = self.vpc_service.get_or_throw_public_route_table(
+                    vpc, self.reservation_id
+                )
+            except ValueError:
+                pass
+            else:
+                self.route_table_service.delete_table(public_rt)
+        except Exception as e:
+            self._cleanup_exceptions.append(e)
+
+    def _remove_traffic_mirror_elements(self, vpc: "Vpc"):
+        # todo
+        pass
+
+    def _remove_vpc(self, vpc: "Vpc"):
+        """In a Shared VPC we do not create the VPC."""
+        pass
+
 
 class CleanupSandboxInfraOperation:
+    STRATEGIES = {
+        VpcMode.DYNAMIC: CleanupSandboxInfraDynamicStaticVpcStrategy,
+        VpcMode.STATIC: CleanupSandboxInfraDynamicStaticVpcStrategy,
+        VpcMode.SHARED: CleanupSandboxInfraSharedVpcStrategy,
+    }
+
     def __init__(
         self, vpc_service, key_pair_service, route_table_service, traffic_mirror_service
     ):
-        """# noqa
-        :param vpc_service: VPC Service
-        :type vpc_service: cloudshell.cp.aws.domain.services.ec2.vpc.VPCService
-        :param key_pair_service: Security Group Service
-        :type key_pair_service: cloudshell.cp.aws.domain.services.ec2.keypair.KeyPairService
-        :param route_table_service:
-        :type route_table_service: cloudshell.cp.aws.domain.services.ec2.route_table.RouteTablesService
-        :param cloudshell.cp.aws.domain.services.ec2.mirroring.TrafficMirrorService traffic_mirror_service:
-        """
         self.vpc_service = vpc_service
         self.key_pair_service = key_pair_service
         self.route_table_service = route_table_service
@@ -23,86 +301,38 @@ class CleanupSandboxInfraOperation:
 
     def cleanup(
         self,
-        ec2_client,
-        ec2_session,
+        ec2_client: "EC2Client",
+        ec2_session: "EC2ServiceResource",
         s3_session,
-        aws_ec2_data_model,
-        reservation_id,
-        actions,
-        logger,
+        aws_ec2_data_model: "AWSEc2CloudProviderResourceModel",
+        reservation_id: str,
+        actions: list,
+        logger: "Logger",
     ):
-        """# noqa
-        :param ec2_client:
-        :param ec2_session:
-        :param s3_session:
-        :param AWSEc2CloudProviderResourceModel aws_ec2_data_model: The AWS EC2 data model
-        :param str reservation_id:
-        :param list[NetworkAction] actions:
-        :param logging.Logger logger:
-        :return:
-        """
         if not actions:
             raise ValueError("No cleanup action was found")
 
         result = CleanupNetwork()
         result.actionId = actions[0].actionId
         result.success = True
+        strategy = self.STRATEGIES[aws_ec2_data_model.vpc_mode](
+            self.vpc_service,
+            self.key_pair_service,
+            self.route_table_service,
+            self.traffic_mirror_service,
+            ec2_client,
+            ec2_session,
+            s3_session,
+            aws_ec2_data_model,
+            reservation_id,
+            actions,
+            logger,
+        )
 
         try:
-            # need to remove the keypair before we try to find the VPC
-            self._remove_keypair(
-                aws_ec2_data_model, ec2_session, logger, reservation_id, s3_session
-            )
-            vpc = self.vpc_service.find_vpc_for_reservation(ec2_session, reservation_id)
-
-            if not vpc:
-                raise ValueError("No VPC was created for this reservation")
-
-            logger.info("Deleting all instances")
-            self.vpc_service.delete_all_instances(vpc)
-
-            logger.info("Deleting vpc and removing dependencies")
-            self.vpc_service.remove_all_internet_gateways(vpc)
-            self.vpc_service.remove_all_security_groups(vpc, reservation_id)
-            self.vpc_service.remove_all_subnets(vpc)
-            self.vpc_service.remove_all_peering(vpc)
-            self._delete_blackhole_routes_in_vpc_route_table(
-                ec2_session, ec2_client, aws_ec2_data_model
-            )
-            self.vpc_service.remove_custom_route_tables(ec2_session, vpc)
-
-            logger.info("Deleting traffic mirror elements")
-            self.vpc_service.delete_traffic_mirror_elements(
-                ec2_client, self.traffic_mirror_service, reservation_id, logger
-            )
-
-            self.vpc_service.delete_vpc(vpc)
-
+            strategy.cleanup()
         except Exception as exc:
-            logger.error(
-                f"Error in cleanup connectivity. Error: {traceback.format_exc()}"
-            )
+            logger.exception("Error in cleanup connectivity")
             result.success = False
             result.errorMessage = f"CleanupSandboxInfra ended with the error: {exc}"
         return result
-
-    def _remove_keypair(
-        self, aws_ec2_data_model, ec2_session, logger, reservation_id, s3_session
-    ):
-        logger.info("Removing private key (pem file) from s3")
-        self.key_pair_service.remove_key_pair_for_reservation_in_s3(
-            s3_session, aws_ec2_data_model.key_pairs_location, reservation_id
-        )
-        logger.info("Removing key pair from ec2")
-        self.key_pair_service.remove_key_pair_for_reservation_in_ec2(
-            ec2_session=ec2_session, reservation_id=reservation_id
-        )
-
-    def _delete_blackhole_routes_in_vpc_route_table(
-        self, ec2_session, ec2_client, aws_ec2_data_model
-    ):
-        rts = self.route_table_service.get_all_route_tables(
-            ec2_session=ec2_session, vpc_id=aws_ec2_data_model.aws_management_vpc_id
-        )
-        for rt in rts:
-            self.route_table_service.delete_blackhole_routes(rt, ec2_client)
