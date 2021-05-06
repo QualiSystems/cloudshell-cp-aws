@@ -27,8 +27,8 @@ from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMo
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
-    from mypy_boto3_ec2.service_resource import RouteTable
+    from mypy_boto3_ec2 import EC2Client
+    from mypy_boto3_ec2.service_resource import RouteTable, Vpc
 
     from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
         AWSEc2CloudProviderResourceModel,
@@ -54,7 +54,7 @@ class PrepareSandboxInfraOperation:
         :param vpc_service: VPC Service
         :type vpc_service: cloudshell.cp.aws.domain.services.ec2.vpc.VPCService
         :param security_group_service:
-        :type security_group_service: clousdhell.cp.aws.domain.services.ec2.security_group.SecurityGroupService
+        :type security_group_service: cloudshell.cp.aws.domain.services.ec2.security_group.SecurityGroupService
         :param key_pair_service:
         :type key_pair_service: cloudshell.cp.aws.domain.services.ec2.keypair.KeyPairService
         :param tag_service:
@@ -231,10 +231,9 @@ class PrepareSandboxInfraOperation:
         if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
             internet_gateway_id = self.get_first_internet_gateway_id(vpc)
             self._create_route_tables_and_connect_gateways(
-                ec2_session,
                 ec2_client,
                 reservation,
-                vpc.id,
+                vpc,
                 aws_ec2_datamodel,
                 internet_gateway_id,
             )
@@ -301,11 +300,7 @@ class PrepareSandboxInfraOperation:
         )
 
         # add route in sandbox *private* route table to the management vpc
-        sandbox_private_route_table = (  # noqa
-            self.vpc_service.get_or_create_private_route_table(
-                ec2_session, reservation, vpc.id
-            )
-        )
+        self.vpc_service.get_or_create_private_route_table(vpc, reservation)
 
         if aws_ec2_datamodel.vpc_mode is VpcMode.DYNAMIC:
             logger.info("Create VPC Peering with management vpc")
@@ -437,10 +432,9 @@ class PrepareSandboxInfraOperation:
         )
 
         # add route in sandbox *private* route table to the management vpc
+        vpc = self.vpc_service.get_vpc_by_id(ec2_session, vpc_id)
         sandbox_private_route_table = (
-            self.vpc_service.get_or_create_private_route_table(
-                ec2_session, reservation_model, vpc_id
-            )
+            self.vpc_service.get_or_create_private_route_table(vpc, reservation_model)
         )
 
         self._update_route_to_peered_vpc(
@@ -454,18 +448,15 @@ class PrepareSandboxInfraOperation:
 
     def _create_route_tables_and_connect_gateways(
         self,
-        ec2_session: "EC2ServiceResource",
         ec2_client: "EC2Client",
         reservation: "ReservationModel",
-        vpc_id: str,
+        vpc: "Vpc",
         aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
         igw_id: Optional[str],
     ):
-        public_rt = self.vpc_service.get_or_create_public_route_table(
-            ec2_session, reservation, vpc_id
-        )
+        public_rt = self.vpc_service.get_or_create_public_route_table(vpc, reservation)
         private_rt = self.vpc_service.get_or_create_private_route_table(
-            ec2_session, reservation, vpc_id
+            vpc, reservation
         )
         self._create_routes_to_tgw(
             ec2_client, [public_rt, private_rt], aws_ec2_datamodel

@@ -2,23 +2,24 @@ from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import EC2ServiceResource
-    from mypy_boto3_ec2.service_resource import RouteTable
+    from mypy_boto3_ec2.service_resource import RouteTable, Vpc
 
+    from cloudshell.cp.aws.domain.services.ec2.tags import TagService
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
 class RouteTablesService:
-    def __init__(self, tag_service):
-        """# noqa
-        :param tag_service: Tag Service
-        """
+    def __init__(self, tag_service: "TagService"):
         self.tag_service = tag_service
 
-    @staticmethod
     def get_all_route_tables(
-        ec2_session: "EC2ServiceResource", vpc_id: str
+        self, ec2_session: "EC2ServiceResource", vpc_id: str
     ) -> List["RouteTable"]:
         vpc = ec2_session.Vpc(vpc_id)
+        return self.get_all_route_tables_for_vpc(vpc)
+
+    @staticmethod
+    def get_all_route_tables_for_vpc(vpc: "Vpc") -> List["RouteTable"]:
         return list(vpc.route_tables.all())
 
     def get_main_route_table(self, ec2_session, vpc_id):
@@ -148,23 +149,17 @@ class RouteTablesService:
 
     def create_route_table(
         self,
-        ec2_session: "EC2ServiceResource",
+        vpc: "Vpc",
         reservation: "ReservationModel",
-        vpc_id: str,
         table_name: str,
     ) -> "RouteTable":
-        vpc = ec2_session.Vpc(vpc_id)
         route_table = vpc.create_route_table()
         tags = self.tag_service.get_default_tags(table_name, reservation)
         self.tag_service.set_ec2_resource_tags(route_table, tags)
         return route_table
 
-    def get_route_table(
-        self, ec2_session: "EC2ServiceResource", vpc_id: str, table_name: str
-    ) -> Optional["RouteTable"]:
-        tables = self.get_all_route_tables(ec2_session, vpc_id)
-        for table in tables:
-            for tag in table.tags:
-                if tag["Key"] == "Name" and tag["Value"] == table_name:
-                    return table
-        return None
+    def get_route_table(self, vpc: "Vpc", table_name: str) -> Optional["RouteTable"]:
+        tag = self.tag_service.get_name_tag(table_name)
+        for table in self.get_all_route_tables_for_vpc(vpc):
+            if tag in table.tags:
+                return table
