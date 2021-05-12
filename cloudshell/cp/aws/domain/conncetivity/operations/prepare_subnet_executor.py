@@ -1,4 +1,6 @@
+import itertools
 import traceback
+from ipaddress import IPv4Network
 from typing import TYPE_CHECKING
 
 from cloudshell.cp.core.models import PrepareCloudInfraResult, PrepareSubnet
@@ -287,12 +289,31 @@ class SubnetActionHelper:
                 f"Decided to use VPC CIDR {self._cidr} as defined on cloud provider "
                 f"for subnet {alias}"
             )
+        elif aws_cp_model.vpc_mode is VpcMode.SHARED:
+            self._cidr = self._validate_cidr(
+                prepare_subnet_params.cidr, aws_cp_model.vpc_cidr, logger
+            )
         else:
             self._cidr = prepare_subnet_params.cidr
             logger.info(
                 f"Decided to use VPC CIDR {self._cidr} as defined on subnet request "
                 f"for subnet {alias}"
             )
+
+    @staticmethod
+    def _validate_cidr(cidr: str, vpc_cidr: str, logger: "Logger"):
+        if not IPv4Network(vpc_cidr).supernet_of(IPv4Network(cidr)):
+            prefix = vpc_cidr.split(".", 2)[:2]  # first two digits
+            suffix = cidr.rsplit(".", 2)[-2:]  # last two digits and mask
+            cidr = ".".join(itertools.chain(prefix, suffix))
+            logger.info(
+                f"Patch subnet CIDR so it should be a subnet of VPC CIDR, now - {cidr}"
+            )
+            if not IPv4Network(vpc_cidr).supernet_of(IPv4Network(cidr)):
+                raise ValueError("Subnet CIDR is not a subnetwork of VPC CIDR")
+        else:
+            logger.info(f"Use subnet cidr from request - {cidr}")
+        return cidr
 
     @property
     def cidr(self):
