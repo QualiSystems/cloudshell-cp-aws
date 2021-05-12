@@ -52,6 +52,9 @@ from cloudshell.cp.aws.domain.deployed_app.operations.vm_details_operation impor
     VmDetailsOperation,
 )
 from cloudshell.cp.aws.domain.operations.autoload_operation import AutoloadOperation
+from cloudshell.cp.aws.domain.services.cloudshell.cs_subnet_service import (
+    CsSubnetService,
+)
 from cloudshell.cp.aws.domain.services.cloudshell.traffic_mirror_pool_services import (
     SessionNumberService,
 )
@@ -277,17 +280,22 @@ class AWSShell:
             context=command_context, aws_session_manager=self.aws_session_manager
         ) as shell_context:
             shell_context.logger.info("Prepare Connectivity")
+            reservation = self.model_parser.convert_to_reservation_model(
+                command_context.reservation
+            )
+            cs_subnet_service = CsSubnetService(
+                shell_context.cloudshell_session, reservation.reservation_id
+            )
 
             results = self.prepare_connectivity_operation.prepare_connectivity(
                 ec2_client=shell_context.aws_api.ec2_client,
                 ec2_session=shell_context.aws_api.ec2_session,
                 s3_session=shell_context.aws_api.s3_session,
-                reservation=self.model_parser.convert_to_reservation_model(
-                    command_context.reservation
-                ),
+                reservation=reservation,
                 aws_ec2_datamodel=shell_context.aws_ec2_resource_model,
                 actions=actions,
                 cancellation_context=cancellation_context,
+                cs_subnet_service=cs_subnet_service,
                 logger=shell_context.logger,
             )
 
