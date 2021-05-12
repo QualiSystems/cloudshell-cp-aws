@@ -11,6 +11,10 @@ if TYPE_CHECKING:
 NETWORK_MASK_PATTERN = re.compile(r"\\\d+&")
 
 
+def get_items(string: str, separator: str = ",") -> List[str]:
+    return list(filter(bool, map(str.strip, string.split(separator))))
+
+
 class VpcMode(Enum):
     DYNAMIC = "Dynamic"
     STATIC = "Static"
@@ -33,6 +37,8 @@ class AWSEc2CloudProviderResourceModel:
     aws_access_key_id: str
     additional_mgt_networks: List[str]
     tgw_id: str
+    vgw_id: str
+    vgw_cidrs: List[str]
 
     def _validate_vpc_id(self):
         if self.vpc_mode is VpcMode.SHARED and not self.vpc_id:
@@ -53,6 +59,16 @@ class AWSEc2CloudProviderResourceModel:
             if not NETWORK_MASK_PATTERN.search(network):
                 raise ValueError(msg.format("it should have network mask"))
 
+    def _validate_vgw_cidrs(self):
+        for cidr in self.vgw_cidrs:
+            msg = f"VGW CIDR is not correct {cidr} - {{}}"
+            try:
+                ipaddress.IPv4Network(cidr)
+            except ipaddress.AddressValueError as e:
+                raise ValueError(msg.format(e))
+            if not NETWORK_MASK_PATTERN.search(cidr):
+                raise ValueError(msg.format("it should have network mask"))
+
     def validate(self):
         self._validate_aws_mgt_vpc_id()
         self._validate_vpc_id()
@@ -64,10 +80,6 @@ class AWSEc2CloudProviderResourceModel:
     ) -> "AWSEc2CloudProviderResourceModel":
         def _get(attr_name: str):
             return resource.attributes[f"{resource.model}.{attr_name}"]
-
-        mgt_networks = list(
-            filter(bool, _get("Additional Management Networks").split(","))
-        )
 
         model = cls(
             region=_get("Region"),
@@ -82,8 +94,10 @@ class AWSEc2CloudProviderResourceModel:
             vpc_id=_get("VPC ID"),
             aws_secret_access_key=_get("AWS Secret Access Key"),
             aws_access_key_id=_get("AWS Access Key ID"),
-            additional_mgt_networks=mgt_networks,
+            additional_mgt_networks=get_items(_get("Additional Management Networks")),
             tgw_id=_get("Transit Gateway ID"),
+            vgw_id=_get("VPN Gateway ID"),
+            vgw_cidrs=get_items(_get("VGW CIDRs")),
         )
         model.validate()
         return model

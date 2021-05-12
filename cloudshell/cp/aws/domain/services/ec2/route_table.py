@@ -59,6 +59,10 @@ class RouteTablesService:
         )
 
     @staticmethod
+    def add_route_to_gateway(route_table: "RouteTable", gateway_id: str, cidr: str):
+        route_table.create_route(GatewayId=gateway_id, DestinationCidrBlock=cidr)
+
+    @staticmethod
     def add_route_to_tgw(route_table: "RouteTable", tgw_id: str, cidr: str):
         """Create a route to Transit Gateway in the route table."""
         route_table.create_route(
