@@ -33,6 +33,7 @@ class PrepareSubnetExecutor:
             self.action = action  # type: PrepareSubnet
             self.subnet = None
             self.is_new_subnet = False
+            self.subnet_rt = None
             self.error = None
 
     def __init__(
@@ -114,6 +115,9 @@ class PrepareSubnetExecutor:
         # connect route table to the subnet if needed
         for item in action_items:
             self._step_attach_to_route_table(item, vpc)
+
+        for item in action_items:
+            self._step_attach_to_vgw(item)
 
         return [self._create_result(item) for item in action_items]
 
@@ -208,6 +212,8 @@ class PrepareSubnetExecutor:
             self.logger.info(
                 "Subnet is public - no need to attach private routing table"
             )
+            return
+
         if item.action.actionParams.isPublic:
             route_table = self.vpc_service.get_or_throw_public_route_table(
                 vpc, self.reservation.reservation_id
@@ -216,9 +222,23 @@ class PrepareSubnetExecutor:
             route_table = self.vpc_service.get_or_throw_private_route_table(
                 vpc, self.reservation.reservation_id
             )
+        item.subnet_rt = route_table
         self.subnet_service.set_subnet_route_table(
             self.ec2_client, item.subnet.subnet_id, route_table.route_table_id
         )
+
+    @step_wrapper
+    def _step_attach_to_vgw(self, item: "PrepareSubnetExecutor.ActionItem"):
+        if (
+            item.subnet_rt
+            and item.action.actionParams.connectToVpn
+            and self.aws_ec2_datamodel.vgw_id
+            and self.aws_ec2_datamodel.vgw_cidrs
+        ):
+            for cidr in self.aws_ec2_datamodel.vgw_cidrs:
+                self.vpc_service.route_table_service.add_route_to_gateway(
+                    item.subnet_rt, self.aws_ec2_datamodel.vgw_id, cidr
+                )
 
     def _create_result(self, item):
         action_result = PrepareCloudInfraResult()
