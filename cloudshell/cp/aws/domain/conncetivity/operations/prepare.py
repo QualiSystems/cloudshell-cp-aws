@@ -219,6 +219,7 @@ class PrepareSandboxInfraOperation:
         vpc = self._get_or_create_vpc(cidr, ec2_session, reservation, aws_ec2_datamodel)
         if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
             cidr = vpc.cidr_block
+            aws_ec2_datamodel.vpc_cidr = cidr
 
         # will enable dns for the vpc
         self.cancellation_service.check_if_cancelled(cancellation_context)
