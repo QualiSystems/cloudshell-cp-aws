@@ -17,6 +17,9 @@ from cloudshell.cp.core.models import (
 from cloudshell.cp.aws.domain.conncetivity.operations.prepare_subnet_executor import (
     PrepareSubnetExecutor,
 )
+from cloudshell.cp.aws.domain.services.cloudshell.cs_subnet_service import (
+    CsSubnetService,
+)
 from cloudshell.cp.aws.domain.services.ec2.transit_gateway import (
     get_transit_gateway_cidr_blocks,
 )
@@ -86,6 +89,7 @@ class PrepareSandboxInfraOperation:
         aws_ec2_datamodel,
         actions,
         cancellation_context,
+        cs_subnet_service: "CsSubnetService",
         logger,
     ):
         """# noqa
@@ -166,6 +170,7 @@ class PrepareSandboxInfraOperation:
             logger=logger,
             ec2_session=ec2_session,
             ec2_client=ec2_client,
+            cs_subnet_service=cs_subnet_service,
         ).execute(subnet_actions)
 
         for subnet_result in subnet_results:
