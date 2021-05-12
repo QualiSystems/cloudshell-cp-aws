@@ -27,6 +27,8 @@ class CsSubnetService:
             alias = item.action.actionParams.alias
             new_alias = self._get_alias(cidr)
             self.cs_session.SetServiceName(self.reservation_id, alias, new_alias)
+            item.action.actionParams.alias = new_alias
+            item.action.actionParams.cidr = cidr
 
     @staticmethod
     def _gen_new_cidr(cidr: str, vpc_cidr: str, logger: "Logger"):
