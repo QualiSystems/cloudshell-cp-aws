@@ -46,7 +46,7 @@ class AWSEc2CloudProviderResourceModel:
             raise ValueError(msg)
 
     def _validate_aws_mgt_vpc_id(self):
-        if not self.aws_management_vpc_id:
+        if not self.aws_management_vpc_id and self.vpc_mode is not VpcMode.SHARED:
             raise ValueError("AWS Mgmt VPC ID attribute must be set")
 
     def _validate_additional_mgt_networks(self):
@@ -90,14 +90,14 @@ class AWSEc2CloudProviderResourceModel:
             max_storage_iops=int(_get("Max Storage IOPS")),
             instance_type=_get("Instance Type"),
             vpc_mode=VpcMode(_get("VPC Mode")),
-            vpc_cidr=_get("VPC CIDR"),
-            vpc_id=_get("VPC ID"),
+            vpc_cidr=_get("Static VPC CIDR"),
+            vpc_id=_get("Shared VPC ID"),
             aws_secret_access_key=_get("AWS Secret Access Key"),
             aws_access_key_id=_get("AWS Access Key ID"),
             additional_mgt_networks=get_items(_get("Additional Management Networks")),
             tgw_id=_get("Transit Gateway ID"),
             vgw_id=_get("VPN Gateway ID"),
-            vgw_cidrs=get_items(_get("VGW CIDRs")),
+            vgw_cidrs=get_items(_get("VPN CIDRs")),
         )
         model.validate()
         return model
