@@ -2,6 +2,7 @@ import itertools
 from ipaddress import IPv4Network
 from logging import Logger
 from typing import TYPE_CHECKING
+
 from cloudshell.api.cloudshell_api import CloudShellAPIError
 
 if TYPE_CHECKING:
@@ -27,15 +28,18 @@ class CsSubnetService:
         if cidr != item.action.actionParams.cidr:
             alias = item.action.actionParams.alias
             new_alias = self._get_alias(cidr)
+            self._set_new_service_name(alias, new_alias, logger)
 
             item.action.actionParams.alias = new_alias
             item.action.actionParams.cidr = cidr
 
     def _set_new_service_name(self, current_name, new_name, logger):
         try:
-            self.cs_session.SetServiceName(self.reservation_id, alias, new_alias)
+            self.cs_session.SetServiceName(self.reservation_id, current_name, new_name)
         except CloudShellAPIError:
-            logger.debug(f"Failed to rename Subnet Service {current_name}", exc_info=True)
+            logger.debug(
+                f"Failed to rename Subnet Service {current_name}", exc_info=True
+            )
 
     @staticmethod
     def _gen_new_cidr(cidr: str, vpc_cidr: str, logger: "Logger"):
