@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from cloudshell.shell.core.driver_context import ResourceContextDetails
 
 
-NETWORK_MASK_PATTERN = re.compile(r"\\\d+&")
+NETWORK_MASK_PATTERN = re.compile(r"/\d+$")
 
 
 def get_items(string: str, separator: str = ",") -> List[str]:
