@@ -480,6 +480,12 @@ class PrepareSandboxInfraOperation:
         tgw_id = aws_ec2_datamodel.tgw_id
         cidr_blocks = get_transit_gateway_cidr_blocks(ec2_client, tgw_id)
         cidr_blocks.extend(aws_ec2_datamodel.additional_mgt_networks)
+        if not cidr_blocks:
+            msg = (
+                "For connecting to TGW you should add CIDRs to 'Additional Management "
+                "Networks' or there should be set CIDR blocks in TGW"
+            )
+            raise ValueError(msg)
 
         for route_table in route_tables:
             for cidr in cidr_blocks:

@@ -239,6 +239,10 @@ class CleanupSandboxInfraSharedVpcStrategy(CleanupSandboxInfraBaseStrategy):
         for subnet in self.vpc_service.find_subnets_by_reservation_id(
             vpc, self.reservation_id
         ):
+            net_interfaces = list(subnet.network_interfaces.all())
+            for net_int in net_interfaces:
+                net_int.detach()
+                net_int.delete()
             self.vpc_service.subnet_service.delete_subnet(subnet)
 
     def _remove_peerings(self, vpc: "Vpc"):
