@@ -627,7 +627,7 @@ class PrepareSandboxInfraOperation:
         self, sg: "SecurityGroup", cidrs: List[str], logger: "Logger"
     ):
         inbound_ports = [
-            PortData(from_port=-1, to_port=-1, protocol="-1", destination=cidr)
+            PortData(from_port="-1", to_port="-1", protocol="-1", destination=cidr)
             for cidr in cidrs
         ]
         self.security_group_service.set_security_group_rules(

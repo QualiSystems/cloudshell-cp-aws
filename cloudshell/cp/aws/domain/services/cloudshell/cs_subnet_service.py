@@ -26,11 +26,11 @@ class CsSubnetService:
     ):
         cidr = self._gen_new_cidr(item.action.actionParams.cidr, vpc_cidr, logger)
         if cidr != item.action.actionParams.cidr:
-            alias = item.action.actionParams.alias
-            new_alias = self._get_alias(cidr)
-            self._set_new_service_name(alias, new_alias, logger)
+            # alias = item.action.actionParams.alias  noqa: E800
+            # new_alias = self._get_alias(cidr)  noqa: E800
+            # self._set_new_service_name(alias, new_alias, logger)  noqa: E800
 
-            item.action.actionParams.alias = new_alias
+            # item.action.actionParams.alias = new_alias  noqa: E800
             item.action.actionParams.cidr = cidr
 
     def _set_new_service_name(self, current_name, new_name, logger):

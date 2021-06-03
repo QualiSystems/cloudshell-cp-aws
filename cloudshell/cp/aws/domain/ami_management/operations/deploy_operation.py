@@ -21,13 +21,24 @@ from cloudshell.cp.aws.models.ami_deployment_model import AMIDeploymentModel
 from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
 
 if TYPE_CHECKING:
+    from logging import Logger
+
+    from mypy_boto3_ec2.service_resource import Vpc
+
+    from cloudshell.cp.aws.domain.services.ec2.network_interface import (
+        NetworkInterfaceService,
+    )
     from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
     from cloudshell.cp.aws.domain.services.strategy.device_index import (
         AbstractDeviceIndexStrategy,
     )
+    from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
+        AWSEc2CloudProviderResourceModel,
+    )
     from cloudshell.cp.aws.models.deploy_aws_ec2_ami_instance_resource_model import (
         DeployAWSEc2AMIInstanceResourceModel,
     )
+    from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
 class DeployAMIOperation:
@@ -43,7 +54,7 @@ class DeployAMIOperation:
         key_pair_service,
         subnet_service,
         elastic_ip_service,
-        network_interface_service,
+        network_interface_service: "NetworkInterfaceService",
         cancellation_service,
         device_index_strategy: "AbstractDeviceIndexStrategy",
         vm_details_provider,
@@ -53,13 +64,10 @@ class DeployAMIOperation:
         :param InstanceCredentialsService ami_credential_service: AMI Credential Service
         :param SecurityGroupService security_group_service: Security Group Service
         :param TagService tag_service: Tag service
-        :param VPCService vpc_service: VPC service
         :param KeyPairService key_pair_service: Key Pair Service
         :param SubnetService subnet_service: Subnet Service
         :param ElasticIpService elastic_ip_service: Elastic Ips Service
-        :param NetworkInterfaceService network_interface_service:
         :param CommandCancellationService cancellation_service:
-        :param AbstractDeviceIndexStrategy device_index_strategy:
         :param VmDetailsProvider vm_details_provider:
         """
         self.tag_service = tag_service
@@ -561,6 +569,8 @@ class DeployAMIOperation:
             network_actions=network_actions,
             security_group_ids=security_group_ids,
             network_config_results=network_config_results,
+            reservation=reservation,
+            aws_model=aws_ec2_resource_model,
             logger=logger,
         )
 
@@ -576,30 +586,25 @@ class DeployAMIOperation:
 
     def _prepare_network_interfaces(
         self,
-        vpc,
-        ami_deployment_model,
-        network_actions,
-        security_group_ids,
-        network_config_results,
-        logger,
+        vpc: "Vpc",
+        ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel",
+        network_actions: List["ConnectSubnet"],
+        security_group_ids: List[str],
+        network_config_results: List[DeployNetworkingResultModel],
+        reservation: "ReservationModel",
+        aws_model: "AWSEc2CloudProviderResourceModel",
+        logger: "Logger",
     ):
-        """# noqa
-        :param vpc: The reservation VPC
-        :param DeployAWSEc2AMIInstanceResourceModel ami_deployment_model:
-        :param list[cloudshell.cp.core.models.ConnectSubnet] network_actions:
-        :param [str] security_group_ids:
-        :param list[DeployNetworkingResultModel] network_config_results: list of network configuration result objects
-        :param logging.Logger logger:
-        :return:
-        """
         if not network_actions:
             logger.info("Single subnet mode detected")
             network_config_results[0].device_index = 0
             return [
-                self.network_interface_service.get_network_interface_for_single_subnet_mode(  # noqa
+                self.network_interface_service.get_network_interface_for_single_subnet_mode(  # noqa: E501
                     add_public_ip=ami_deployment_model.add_public_ip,
                     security_group_ids=security_group_ids,
                     vpc=vpc,
+                    reservation_id=reservation.reservation_id,
+                    vpc_mode=aws_model.vpc_mode,
                     private_ip=ami_deployment_model.private_ip_address,
                 )
             ]
@@ -655,6 +660,8 @@ class DeployAMIOperation:
                     add_public_ip=ami_deployment_model.add_public_ip,
                     security_group_ids=security_group_ids,
                     vpc=vpc,
+                    reservation_id=reservation.reservation_id,
+                    vpc_mode=aws_model.vpc_mode,
                     private_ip=ami_deployment_model.private_ip_address,
                 )
             ]
