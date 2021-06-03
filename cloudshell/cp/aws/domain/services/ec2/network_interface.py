@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING, List, Optional
 
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
+
 if TYPE_CHECKING:
     from mypy_boto3_ec2.service_resource import Vpc
 
     from cloudshell.cp.aws.domain.services.ec2.subnet import SubnetService
-    from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 
 class NetworkInterfaceService:
