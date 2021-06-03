@@ -27,11 +27,14 @@ from cloudshell.cp.aws.domain.services.waiters.vpc_peering import (
     VpcPeeringConnectionWaiter,
 )
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
+from cloudshell.cp.aws.models.port_data import PortData
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 if TYPE_CHECKING:
+    from logging import Logger
+
     from mypy_boto3_ec2 import EC2Client
-    from mypy_boto3_ec2.service_resource import RouteTable, Vpc
+    from mypy_boto3_ec2.service_resource import RouteTable, SecurityGroup, Vpc
 
     from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
         AWSEc2CloudProviderResourceModel,
@@ -272,6 +275,11 @@ class PrepareSandboxInfraOperation:
             management_sg_id=aws_ec2_datamodel.aws_management_sg_id,
             need_management_access=(aws_ec2_datamodel.vpc_mode is VpcMode.DYNAMIC),
         )
+        if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
+            for sg in security_groups:
+                self._allow_inbound_traffic_from_cidrs(
+                    sg, aws_ec2_datamodel.additional_mgt_networks, logger
+                )
         return self._create_prepare_network_result(action, security_groups, vpc)
 
     @staticmethod
@@ -614,6 +622,17 @@ class PrepareSandboxInfraOperation:
         )
 
         return [isolated_sg, default_sg]
+
+    def _allow_inbound_traffic_from_cidrs(
+        self, sg: "SecurityGroup", cidrs: List[str], logger: "Logger"
+    ):
+        inbound_ports = [
+            PortData(from_port=-1, to_port=-1, protocol="-1", destination=cidr)
+            for cidr in cidrs
+        ]
+        self.security_group_service.set_security_group_rules(
+            sg, inbound_ports, logger=logger
+        )
 
     def _get_or_create_sandbox_default_security_group(
         self,
