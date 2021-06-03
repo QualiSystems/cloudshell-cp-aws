@@ -98,8 +98,12 @@ class PrepareSubnetExecutor:
         )
 
         is_multi_subnet_mode = len(action_items) > 1  # type: bool
-
-        # todo rename in setup script
+        # todo rename Subnet service in setup script
+        if self.aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
+            for item in action_items:
+                self.cs_subnet_service.patch_subnet_cidr(
+                    item, vpc.cidr_block, self.logger
+                )
 
         # get existing subnet bt their cidr
         for item in action_items:

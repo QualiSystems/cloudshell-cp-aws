@@ -1,5 +1,11 @@
+from typing import TYPE_CHECKING, List
+
 from cloudshell.cp.aws.domain.services.ec2.tags import TagService
 from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2.service_resource import Subnet, Vpc
+
 
 SUBNET_NAME = "VPC Name: {}"
 
@@ -37,18 +43,22 @@ class SubnetService:
     ):
         return vpc.create_subnet(CidrBlock=cidr, AvailabilityZone=availability_zone)
 
-    def get_vpc_subnets(self, vpc):
+    def get_vpc_subnets(self, vpc: "Vpc") -> List["Subnet"]:
         subnets = list(vpc.subnets.all())
         if not subnets:
             raise ValueError(f"The given VPC({vpc.id}) has no subnets")
         return subnets
 
-    @staticmethod
-    def get_first_subnet_from_vpc(vpc):
-        subnets = list(vpc.subnets.all())
-        if not subnets:
-            raise ValueError(f"The given VPC({vpc.id}) has no subnet")
+    def get_first_subnet_from_vpc(self, vpc: "Vpc") -> "Subnet":
+        subnets = self.get_vpc_subnets(vpc)
         return subnets[0]
+
+    def get_subnet_by_reservation_id(self, vpc: "Vpc", rid: str) -> "Subnet":
+        reservation_tag = self.tag_service.get_reservation_tag(rid)
+        for subnet in self.get_vpc_subnets(vpc):
+            if reservation_tag in subnet.tags:
+                return subnet
+        raise Exception(f"There isn't the subnet for the reservation '{rid}'")
 
     def get_first_or_none_subnet_from_vpc(self, vpc, cidr=None):
         subnets = list(vpc.subnets.all())
