@@ -99,11 +99,7 @@ class PrepareSubnetExecutor:
 
         is_multi_subnet_mode = len(action_items) > 1  # type: bool
 
-        if self.aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
-            for item in action_items:
-                self.cs_subnet_service.patch_subnet_cidr(
-                    item, vpc.cidr_block, self.logger
-                )
+        # todo rename in setup script
 
         # get existing subnet bt their cidr
         for item in action_items:
@@ -242,7 +238,7 @@ class PrepareSubnetExecutor:
     def _step_attach_to_vgw(self, item: "PrepareSubnetExecutor.ActionItem"):
         if (
             item.subnet_rt
-            and item.action.actionParams.connectToVpn
+            and item.action.actionParams.connectToVpn  # fixme VpnAccess
             and self.aws_ec2_datamodel.vgw_id
             and self.aws_ec2_datamodel.vgw_cidrs
         ):
