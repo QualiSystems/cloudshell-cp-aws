@@ -3,27 +3,38 @@ from typing import TYPE_CHECKING, List, Optional
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2.service_resource import Vpc
+    from mypy_boto3_ec2 import EC2ServiceResource
+    from mypy_boto3_ec2.service_resource import SecurityGroup, Vpc
 
+    from cloudshell.cp.aws.domain.services.ec2.security_group import (
+        SecurityGroupService,
+    )
     from cloudshell.cp.aws.domain.services.ec2.subnet import SubnetService
+    from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
 class NetworkInterfaceService:
-    def __init__(self, subnet_service: "SubnetService"):
+    def __init__(
+        self,
+        subnet_service: "SubnetService",
+        security_group_service: "SecurityGroupService",
+    ):
         self.subnet_service = subnet_service
+        self.security_group_service = security_group_service
 
     def get_network_interface_for_single_subnet_mode(
         self,
         add_public_ip: bool,
         security_group_ids: List[str],
         vpc: "Vpc",
-        reservation_id: str,
+        ec2_session: "EC2ServiceResource",
+        reservation: "ReservationModel",
         vpc_mode: "VpcMode",
         private_ip: Optional[str] = None,
     ):
         if vpc_mode is VpcMode.SHARED:
             subnet = self.subnet_service.get_subnet_by_reservation_id(
-                vpc, reservation_id
+                vpc, reservation.reservation_id
             )
         else:
             subnet = self.subnet_service.get_first_subnet_from_vpc(vpc)
@@ -31,13 +42,52 @@ class NetworkInterfaceService:
             subnet_id=subnet.subnet_id,
             device_index=0,
             groups=security_group_ids,
+            vpc=vpc,
+            ec2_session=ec2_session,
+            reservation=reservation,
             public_ip=add_public_ip,
             private_ip=private_ip,
         )
 
+    def _get_or_create_subnet_sg(
+        self,
+        subnet_id: str,
+        vpc: "Vpc",
+        ec2_session: "EC2ServiceResource",
+        reservation: "ReservationModel",
+    ) -> "SecurityGroup":
+        subnet_sg_name = self.security_group_service.subnet_sg_name(subnet_id)
+        subnet_sg = self.security_group_service.get_security_group_by_name(
+            vpc, subnet_sg_name
+        )
+        if not subnet_sg:
+            subnet_sg = self.security_group_service.create_security_group(
+                ec2_session, vpc.vpc_id, subnet_sg_name
+            )
+            tags = self.subnet_service.tag_service.get_default_tags(
+                subnet_sg_name, reservation
+            )
+            self.subnet_service.tag_service.set_ec2_resource_tags(subnet_sg, tags)
+            self.security_group_service.set_subnet_sg_rules(subnet_sg)
+        return subnet_sg
+
     def build_network_interface_dto(
-        self, subnet_id, device_index, groups, public_ip=None, private_ip=None
+        self,
+        subnet_id,
+        device_index,
+        groups,
+        vpc: "Vpc",
+        ec2_session: "EC2ServiceResource",
+        reservation: "ReservationModel",
+        public_ip=None,
+        private_ip=None,
     ):
+        # add SecurityGroup for the subnet
+        subnet_sg = self._get_or_create_subnet_sg(
+            subnet_id, vpc, ec2_session, reservation
+        )
+        groups.append(subnet_sg.id)
+
         net_if = {"SubnetId": subnet_id, "DeviceIndex": device_index, "Groups": groups}
 
         if public_ip:

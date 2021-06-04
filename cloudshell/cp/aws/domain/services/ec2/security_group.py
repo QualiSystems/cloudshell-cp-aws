@@ -1,19 +1,22 @@
 import uuid
+from typing import TYPE_CHECKING, List
 
 from cloudshell.cp.aws.domain.services.ec2.tags import IsolationTagValues, TypeTagValues
 
+if TYPE_CHECKING:
+    from mypy_boto3_ec2.service_resource import SecurityGroup, Vpc
+
+    from cloudshell.cp.aws.domain.services.ec2.tags import TagService
+
 
 class SecurityGroupService:
-    def __init__(self, tag_service):
-        """# noqa
-        :param TagService tag_service:
-        :return:
-        """
+    def __init__(self, tag_service: "TagService"):
         self.tag_service = tag_service
 
     CLOUDSHELL_SANDBOX_DEFAULT_SG = "Cloudshell Sandbox SG {0}"
     CLOUDSHELL_SANDBOX_ISOLATED_FROM_SANDBOX_SG = "Isolated SG {0}"
     CLOUDSHELL_CUSTOM_SECURITY_GROUP = "Cloudshell Custom SG {0}"
+    CLOUDSHELL_SUBNET_SECURITY_GROUP = "Cloudshell Subnet SG {}"
     CLOUDSHELL_SECURITY_GROUP_DESCRIPTION = "Cloudshell Security Group"
 
     def delete_security_group(self, sg):
@@ -54,6 +57,10 @@ class SecurityGroupService:
             reservation_id
         )
 
+    @classmethod
+    def subnet_sg_name(cls, subnet_id: str) -> str:
+        return cls.CLOUDSHELL_SUBNET_SECURITY_GROUP.format(subnet_id)
+
     @staticmethod
     def get_security_group_by_name(vpc, name):
         security_groups = [
@@ -67,6 +74,12 @@ class SecurityGroupService:
             raise ValueError("Too many security groups by that name")
 
         return security_groups[0]
+
+    def get_security_groups_by_reservation_id(
+        self, vpc: "Vpc", reservation_id: str
+    ) -> List["SecurityGroup"]:
+        tag = self.tag_service.get_reservation_tag(reservation_id)
+        return [sg for sg in vpc.security_groups.all() if sg.tags and tag in sg.tags]
 
     def set_shared_reservation_security_group_rules(
         self, security_group, management_sg_id, isolated_sg, need_management_sg
@@ -151,6 +164,18 @@ class SecurityGroupService:
                 }
             ]
             security_group.authorize_ingress(IpPermissions=ip_permissions)
+
+    @staticmethod
+    def set_subnet_sg_rules(security_group):
+        rule = {
+            "IpProtocol": "-1",
+            "FromPort": -1,
+            "ToPort": -1,
+            "UserIdGroupPairs": [
+                {"GroupId": security_group.id},
+            ],
+        }
+        security_group.authorize_ingress(IpPermissions=[rule])
 
     def set_security_group_rules(
         self, security_group, inbound_ports=None, outbound_ports=None, logger=None

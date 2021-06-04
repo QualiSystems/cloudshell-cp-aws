@@ -139,7 +139,8 @@ class AWSShell:
         self.vpc_waiter = VPCWaiter()
         self.route_tables_service = RouteTablesService(self.tag_service)
         self.network_interface_service = NetworkInterfaceService(
-            subnet_service=self.subnet_service
+            subnet_service=self.subnet_service,
+            security_group_service=self.security_group_service,
         )
         self.elastic_ip_service = ElasticIpService()
         self.vm_details_provider = VmDetailsProvider()
