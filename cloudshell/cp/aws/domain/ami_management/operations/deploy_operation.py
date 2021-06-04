@@ -23,6 +23,7 @@ from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResu
 if TYPE_CHECKING:
     from logging import Logger
 
+    from mypy_boto3_ec2 import EC2ServiceResource
     from mypy_boto3_ec2.service_resource import Vpc
 
     from cloudshell.cp.aws.domain.services.ec2.network_interface import (
@@ -571,6 +572,7 @@ class DeployAMIOperation:
             network_config_results=network_config_results,
             reservation=reservation,
             aws_model=aws_ec2_resource_model,
+            ec2_session=ec2_session,
             logger=logger,
         )
 
@@ -593,6 +595,7 @@ class DeployAMIOperation:
         network_config_results: List[DeployNetworkingResultModel],
         reservation: "ReservationModel",
         aws_model: "AWSEc2CloudProviderResourceModel",
+        ec2_session: "EC2ServiceResource",
         logger: "Logger",
     ):
         if not network_actions:
@@ -603,7 +606,8 @@ class DeployAMIOperation:
                     add_public_ip=ami_deployment_model.add_public_ip,
                     security_group_ids=security_group_ids,
                     vpc=vpc,
-                    reservation_id=reservation.reservation_id,
+                    ec2_session=ec2_session,
+                    reservation=reservation,
                     vpc_mode=aws_model.vpc_mode,
                     private_ip=ami_deployment_model.private_ip_address,
                 )
@@ -638,6 +642,9 @@ class DeployAMIOperation:
                     subnet_id=net_config.actionParams.subnetId,
                     device_index=device_index,
                     groups=security_group_ids,  # todo: set groups by subnet id
+                    vpc=vpc,
+                    ec2_session=ec2_session,
+                    reservation=reservation,
                     public_ip=public_ip_prop_value,
                     private_ip=private_ip,
                 )
@@ -660,7 +667,8 @@ class DeployAMIOperation:
                     add_public_ip=ami_deployment_model.add_public_ip,
                     security_group_ids=security_group_ids,
                     vpc=vpc,
-                    reservation_id=reservation.reservation_id,
+                    ec2_session=ec2_session,
+                    reservation=reservation,
                     vpc_mode=aws_model.vpc_mode,
                     private_ip=ami_deployment_model.private_ip_address,
                 )

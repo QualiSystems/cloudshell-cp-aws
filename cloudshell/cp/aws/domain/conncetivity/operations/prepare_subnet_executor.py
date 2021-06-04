@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from logging import Logger
 
     from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
+    from mypy_boto3_ec2.service_resource import Vpc
 
     from cloudshell.shell.core.driver_context import CancellationContext
 
@@ -250,6 +251,19 @@ class PrepareSubnetExecutor:
                 self.vpc_service.route_table_service.add_route_to_gateway(
                     item.subnet_rt, self.aws_ec2_datamodel.vgw_id, cidr
                 )
+
+    @step_wrapper
+    def _create_security_group_for_subnet(
+        self, item: "PrepareSubnetExecutor.ActionItem", vpc: "Vpc"
+    ):
+        sg_service = self.vpc_service.sg_service
+        sg_name = sg_service.subnet_sg_name(item.subnet.subnet_id)
+        sg = sg_service.get_security_group_by_name(vpc, sg_name)
+        if not sg:
+            sg = sg_service.create_security_group(self.ec2_session, vpc.vpc_id, sg_name)
+            tags = self.tag_service.get_default_tags(sg_name, self.reservation)
+            self.tag_service.set_ec2_resource_tags(sg, tags)
+            sg_service.set_subnet_sg_rules(sg)
 
     def _create_result(self, item):
         action_result = PrepareCloudInfraResult()

@@ -228,9 +228,10 @@ class CleanupSandboxInfraSharedVpcStrategy(CleanupSandboxInfraBaseStrategy):
 
     def _remove_security_groups(self, vpc: "Vpc"):
         sg_service = self.vpc_service.sg_service
-        for sg_name in sg_service.get_sandbox_security_group_names(self.reservation_id):
+        for sg in sg_service.get_security_groups_by_reservation_id(
+            vpc, self.reservation_id
+        ):
             try:
-                sg = sg_service.get_security_group_by_name(vpc, sg_name)
                 sg_service.delete_security_group(sg)
             except Exception as e:
                 self._cleanup_exceptions.append(e)
