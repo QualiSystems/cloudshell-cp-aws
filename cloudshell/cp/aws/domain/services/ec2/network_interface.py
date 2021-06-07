@@ -43,50 +43,41 @@ class NetworkInterfaceService:
             device_index=0,
             groups=security_group_ids,
             vpc=vpc,
-            ec2_session=ec2_session,
-            reservation=reservation,
+            vpc_mode=vpc_mode,
             public_ip=add_public_ip,
             private_ip=private_ip,
         )
 
-    def _get_or_create_subnet_sg(
+    def _get_subnet_sg(
         self,
         subnet_id: str,
         vpc: "Vpc",
-        ec2_session: "EC2ServiceResource",
-        reservation: "ReservationModel",
     ) -> "SecurityGroup":
         subnet_sg_name = self.security_group_service.subnet_sg_name(subnet_id)
         subnet_sg = self.security_group_service.get_security_group_by_name(
             vpc, subnet_sg_name
         )
         if not subnet_sg:
-            subnet_sg = self.security_group_service.create_security_group(
-                ec2_session, vpc.vpc_id, subnet_sg_name
+            raise ValueError(
+                f"{subnet_sg_name} should be created when creating the "
+                f"Subnet {subnet_id}"
             )
-            tags = self.subnet_service.tag_service.get_default_tags(
-                subnet_sg_name, reservation
-            )
-            self.subnet_service.tag_service.set_ec2_resource_tags(subnet_sg, tags)
-            self.security_group_service.set_subnet_sg_rules(subnet_sg)
         return subnet_sg
 
     def build_network_interface_dto(
         self,
         subnet_id,
         device_index,
-        groups,
+        groups: List[str],
         vpc: "Vpc",
-        ec2_session: "EC2ServiceResource",
-        reservation: "ReservationModel",
+        vpc_mode: "VpcMode",
         public_ip=None,
         private_ip=None,
     ):
-        # add SecurityGroup for the subnet
-        subnet_sg = self._get_or_create_subnet_sg(
-            subnet_id, vpc, ec2_session, reservation
-        )
-        groups.append(subnet_sg.id)
+        if vpc_mode is VpcMode.SHARED:
+            # add SecurityGroup for the subnet
+            subnet_sg = self._get_subnet_sg(subnet_id, vpc)
+            groups.append(subnet_sg.id)
 
         net_if = {"SubnetId": subnet_id, "DeviceIndex": device_index, "Groups": groups}
 

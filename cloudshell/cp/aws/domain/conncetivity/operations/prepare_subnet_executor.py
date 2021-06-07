@@ -131,6 +131,10 @@ class PrepareSubnetExecutor:
         for item in action_items:
             self._step_attach_to_vgw(item)
 
+        if self.aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
+            for item in action_items:
+                self._step_create_security_group_for_subnet(item, vpc)
+
         return [self._create_result(item) for item in action_items]
 
     # DECORATOR! First argument is the decorated function!
@@ -253,7 +257,7 @@ class PrepareSubnetExecutor:
                 )
 
     @step_wrapper
-    def _create_security_group_for_subnet(
+    def _step_create_security_group_for_subnet(
         self, item: "PrepareSubnetExecutor.ActionItem", vpc: "Vpc"
     ):
         sg_service = self.vpc_service.sg_service

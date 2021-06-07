@@ -643,8 +643,7 @@ class DeployAMIOperation:
                     device_index=device_index,
                     groups=security_group_ids,  # todo: set groups by subnet id
                     vpc=vpc,
-                    ec2_session=ec2_session,
-                    reservation=reservation,
+                    vpc_mode=aws_model.vpc_mode,
                     public_ip=public_ip_prop_value,
                     private_ip=private_ip,
                 )
