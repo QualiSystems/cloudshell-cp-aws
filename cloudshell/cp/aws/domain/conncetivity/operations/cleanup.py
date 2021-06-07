@@ -188,7 +188,7 @@ class CleanupSandboxInfraDynamicStaticVpcStrategy(CleanupSandboxInfraBaseStrateg
         self.vpc_service.remove_all_internet_gateways(vpc)
 
     def _remove_security_groups(self, vpc: "Vpc"):
-        self.vpc_service.remove_all_security_groups(vpc, self.reservation_id)
+        self.vpc_service.remove_all_security_groups(vpc)
 
     def _remove_subnets(self, vpc: "Vpc"):
         self.vpc_service.remove_all_subnets(vpc)
@@ -228,9 +228,10 @@ class CleanupSandboxInfraSharedVpcStrategy(CleanupSandboxInfraBaseStrategy):
 
     def _remove_security_groups(self, vpc: "Vpc"):
         sg_service = self.vpc_service.sg_service
-        for sg in sg_service.get_security_groups_by_reservation_id(
+        sg_list = sg_service.get_security_groups_by_reservation_id(
             vpc, self.reservation_id
-        ):
+        )
+        for sg in sg_service.sort_sg_list(sg_list):
             try:
                 sg_service.delete_security_group(sg)
             except Exception as e:

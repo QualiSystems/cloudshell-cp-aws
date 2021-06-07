@@ -15,6 +15,9 @@ class SecurityGroupService:
 
     CLOUDSHELL_SANDBOX_DEFAULT_SG = "Cloudshell Sandbox SG {0}"
     CLOUDSHELL_SANDBOX_ISOLATED_FROM_SANDBOX_SG = "Isolated SG {0}"
+    CLOUDSHELL_SANDBOX_ISOLATED_SG_STARTS = (
+        CLOUDSHELL_SANDBOX_ISOLATED_FROM_SANDBOX_SG.replace("{}", "").replace("{0}", "")
+    )
     CLOUDSHELL_CUSTOM_SECURITY_GROUP = "Cloudshell Custom SG {0}"
     CLOUDSHELL_SUBNET_SECURITY_GROUP = "Cloudshell Subnet SG {}"
     CLOUDSHELL_SECURITY_GROUP_DESCRIPTION = "Cloudshell Security Group"
@@ -376,4 +379,16 @@ class SecurityGroupService:
         return (
             isolation_tag == IsolationTagValues.Exclusive
             and type_tag == TypeTagValues.Interface
+        )
+
+    def sort_sg_list(self, sg_list: List["SecurityGroup"]) -> List["SecurityGroup"]:
+        """Sort Security Groups and set Isolated SG to the end.
+
+        Isolated SGs can be used in other SGs and should be deleted last
+        """
+        return sorted(
+            sg_list,
+            key=lambda sg: sg.group_name.startswith(
+                self.CLOUDSHELL_SANDBOX_ISOLATED_SG_STARTS
+            ),
         )
