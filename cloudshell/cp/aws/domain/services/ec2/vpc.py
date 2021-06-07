@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, List, Optional
 from retrying import retry
 
 from cloudshell.cp.aws.common import retry_helper
-from cloudshell.cp.aws.domain.common.list_helper import index_of
 from cloudshell.cp.aws.domain.conncetivity.operations.traffic_mirror_cleaner import (
     TrafficMirrorCleaner,
 )
@@ -325,35 +324,10 @@ class VPCService:
                 peer.delete()
         return True
 
-    def remove_all_security_groups(self, vpc, reservation_id):
-        """Will remove all security groups to the VPC.
-
-        :param vpc: EC2 VPC instance
-        :param str reservation_id: The reservation id
-        :return:
-        """
+    def remove_all_security_groups(self, vpc: "Vpc"):
         security_groups = list(vpc.security_groups.all())
-
-        # its possible that a group is dependent on an isolated group so we must delete
-        # the isolated group LAST
-        isolated_sg_name = self.sg_service.sandbox_isolated_sg_name(reservation_id)
-
-        # trying to find isolated group index
-        isolated_ix = index_of(
-            security_groups, lambda sg: sg.group_name == isolated_sg_name
-        )
-
-        # if there is one
-        if isolated_ix is not None:
-            # move isolated group to the end
-            security_groups.insert(
-                len(security_groups), security_groups.pop(isolated_ix)
-            )
-
-        for sg in security_groups:
+        for sg in self.sg_service.sort_sg_list(security_groups):
             self.sg_service.delete_security_group(sg)
-
-        return True
 
     def remove_all_subnets(self, vpc):
         """Will remove all attached subnets to that vpc.
