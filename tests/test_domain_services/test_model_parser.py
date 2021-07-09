@@ -61,7 +61,7 @@ class TestModelParser(TestCase):
 
     def test_convert_to_deployment_resource_model(self):
         # Arrange
-        d_path = "Amazon AWS Cloud Provider Shell 2G.Amazon AWS EC2 Instance 2G"
+        d_path = "Amazon AWS Cloud Provider 2G.Amazon AWS EC2 Instance 2G"
         attributes = [
             {
                 "attributeName": f"{d_path}.AWS AMI Id",
