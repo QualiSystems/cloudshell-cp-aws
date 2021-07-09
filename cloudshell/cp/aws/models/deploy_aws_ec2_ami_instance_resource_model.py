@@ -6,9 +6,7 @@ from cloudshell.cp.aws.domain.services.parsers.aws_model_parser import AWSModels
 
 
 class DeployAWSEc2AMIInstanceResourceModel:
-    __deploymentModel__ = (
-        "Amazon AWS Cloud Provider Shell 2G.Amazon AWS EC2 Instance 2G"
-    )
+    __deploymentModel__ = "Amazon AWS Cloud Provider 2G.Amazon AWS EC2 Instance 2G"
 
     def __init__(
         self, attributes

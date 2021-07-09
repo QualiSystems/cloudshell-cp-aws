@@ -33,6 +33,7 @@ class AWSEc2CloudProviderResourceModel:
     vpc_mode: VpcMode
     vpc_cidr: str
     vpc_id: str
+    shared_vpc_role_arn: str
     aws_secret_access_key: str
     aws_access_key_id: str
     additional_mgt_networks: List[str]
@@ -69,10 +70,15 @@ class AWSEc2CloudProviderResourceModel:
             if not NETWORK_MASK_PATTERN.search(cidr):
                 raise ValueError(msg.format("it should have network mask"))
 
+    def _validate_role_arn(self):
+        if self.vpc_mode is VpcMode.SHARED and not self.shared_vpc_role_arn:
+            raise ValueError("You should specify Role Arn for the Shared VPC mode.")
+
     def validate(self):
         self._validate_aws_mgt_vpc_id()
         self._validate_vpc_id()
         self._validate_additional_mgt_networks()
+        self._validate_role_arn()
 
     @classmethod
     def from_resource(
@@ -98,6 +104,7 @@ class AWSEc2CloudProviderResourceModel:
             tgw_id=_get("Transit Gateway ID"),
             vgw_id=_get("VPN Gateway ID"),
             vgw_cidrs=get_items(_get("VPN CIDRs")),
+            shared_vpc_role_arn=_get("Shared VPC Role Arn"),
         )
         model.validate()
         return model
