@@ -44,6 +44,7 @@ class AWSSessionProvider:
             ec2_session=aws_ec2_session.resource(self.EC2),
             s3_session=default_session.resource(self.S3),
             ec2_client=aws_ec2_session.client(self.EC2),
+            default_ec2_session=default_session.resource(self.EC2),
         )
 
     def get_s3_session(self, cloudshell_session, aws_ec2_data_model):

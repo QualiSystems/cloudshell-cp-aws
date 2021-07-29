@@ -33,7 +33,7 @@ from cloudshell.cp.aws.models.reservation_model import ReservationModel
 if TYPE_CHECKING:
     from logging import Logger
 
-    from mypy_boto3_ec2 import EC2Client
+    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
     from mypy_boto3_ec2.service_resource import RouteTable, SecurityGroup, Vpc
 
     from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
@@ -86,6 +86,7 @@ class PrepareSandboxInfraOperation:
     def prepare_connectivity(
         self,
         ec2_client,
+        default_ec2_session,
         ec2_session,
         s3_session,
         reservation,
@@ -132,6 +133,7 @@ class PrepareSandboxInfraOperation:
         try:
             result = self._prepare_network(
                 ec2_client,
+                default_ec2_session,
                 ec2_session,
                 reservation,
                 aws_ec2_datamodel,
@@ -199,6 +201,7 @@ class PrepareSandboxInfraOperation:
     def _prepare_network(
         self,
         ec2_client,
+        default_ec2_session,
         ec2_session,
         reservation,
         aws_ec2_datamodel,
@@ -241,6 +244,7 @@ class PrepareSandboxInfraOperation:
             internet_gateway_id = self.get_first_internet_gateway_id(vpc)
             self._create_route_tables_and_connect_gateways(
                 ec2_client,
+                default_ec2_session,
                 reservation,
                 vpc,
                 aws_ec2_datamodel,
@@ -463,6 +467,7 @@ class PrepareSandboxInfraOperation:
     def _create_route_tables_and_connect_gateways(
         self,
         ec2_client: "EC2Client",
+        default_ec2_session: "EC2ServiceResource",
         reservation: "ReservationModel",
         vpc: "Vpc",
         aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
@@ -473,7 +478,7 @@ class PrepareSandboxInfraOperation:
             vpc, reservation
         )
         self._create_routes_to_tgw(
-            ec2_client, [public_rt, private_rt], aws_ec2_datamodel
+            ec2_client, default_ec2_session, [public_rt, private_rt], aws_ec2_datamodel
         )
 
         if igw_id:
@@ -482,22 +487,29 @@ class PrepareSandboxInfraOperation:
     def _create_routes_to_tgw(
         self,
         ec2_client: "EC2Client",
+        default_ec2_session: "EC2ServiceResource",
         route_tables: List["RouteTable"],
         aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
     ):
         tgw_id = aws_ec2_datamodel.tgw_id
         cidr_blocks = get_transit_gateway_cidr_blocks(ec2_client, tgw_id)
+        mgmt_cidr = self._get_mgmt_cidr_block(default_ec2_session, aws_ec2_datamodel)
+        cidr_blocks.append(mgmt_cidr)
         cidr_blocks.extend(aws_ec2_datamodel.additional_mgt_networks)
-        if not cidr_blocks:
-            msg = (
-                "For connecting to TGW you should add CIDRs to 'Additional Management "
-                "Networks' or there should be set CIDR blocks in TGW"
-            )
-            raise ValueError(msg)
 
         for route_table in route_tables:
             for cidr in cidr_blocks:
                 self._route_to_tgw(route_table, cidr, tgw_id)
+
+    def _get_mgmt_cidr_block(
+        self,
+        default_ec2_session: "EC2ServiceResource",
+        aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
+    ) -> str:
+        vpc = self.vpc_service.get_vpc_by_id(
+            default_ec2_session, aws_ec2_datamodel.aws_management_vpc_id
+        )
+        return vpc.cidr_block
 
     def _route_to_tgw(self, route_table: "RouteTable", cidr: str, tgw_id: str):
         route_tgw = self.route_table_service.find_first_route(
