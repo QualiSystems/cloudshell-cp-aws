@@ -92,7 +92,8 @@ class AWSSessionProvider:
     def _assume_shared_vpc_role(
         aws_session, aws_ec2_data_model: "AWSEc2CloudProviderResourceModel"
     ):
-        sts = aws_session.client("sts")
+        endpoint_url = f"https://sts.{aws_ec2_data_model.region}.amazonaws.com"
+        sts = aws_session.client("sts", endpoint_url=endpoint_url)
         data = sts.assume_role(
             RoleArn=aws_ec2_data_model.shared_vpc_role_arn,
             RoleSessionName="CS-SharedVPC-Session",
