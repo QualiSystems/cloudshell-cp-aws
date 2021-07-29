@@ -3,6 +3,8 @@ from botocore.exceptions import ClientError
 
 from cloudshell.shell.core.driver_context import AutoLoadDetails
 
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
+
 
 class AutoloadOperation:
     def get_inventory(
@@ -16,9 +18,10 @@ class AutoloadOperation:
         """
         logger.info("Starting Autoload Operation...")
 
-        self._validate_management_security_group(
-            cloud_provider_model, ec2_client, logger
-        )
+        if cloud_provider_model.vpc_mode is not VpcMode.SHARED:
+            self._validate_management_security_group(
+                cloud_provider_model, ec2_client, logger
+            )
 
         # removed for now
         # self._validate_keypair_location_in_s3(cloud_provider_model, logger, s3_session) # noqa
