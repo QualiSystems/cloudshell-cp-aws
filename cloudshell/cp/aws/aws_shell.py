@@ -290,6 +290,7 @@ class AWSShell:
 
             results = self.prepare_connectivity_operation.prepare_connectivity(
                 ec2_client=shell_context.aws_api.ec2_client,
+                default_ec2_session=shell_context.aws_api.default_ec2_session,
                 ec2_session=shell_context.aws_api.ec2_session,
                 s3_session=shell_context.aws_api.s3_session,
                 reservation=reservation,
