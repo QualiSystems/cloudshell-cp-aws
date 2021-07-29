@@ -47,7 +47,7 @@ class AWSEc2CloudProviderResourceModel:
             raise ValueError(msg)
 
     def _validate_aws_mgt_vpc_id(self):
-        if not self.aws_management_vpc_id and self.vpc_mode is not VpcMode.SHARED:
+        if not self.aws_management_vpc_id:
             raise ValueError("AWS Mgmt VPC ID attribute must be set")
 
     def _validate_additional_mgt_networks(self):
