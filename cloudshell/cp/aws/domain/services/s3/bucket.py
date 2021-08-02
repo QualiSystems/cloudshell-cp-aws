@@ -4,8 +4,8 @@ class S3BucketService:
 
     @staticmethod
     def get_body_of_object(obj):
-        """# noqa
-        Will load a S3 object and download it content
+        """Will load a S3 object and download it content.
+
         :param obj: S3 Object
         :return: str it body data
         """
@@ -13,7 +13,7 @@ class S3BucketService:
             raise ValueError("S3 object cannot be None")
         object_body = obj.get()
         body_stream = object_body["Body"]
-        data = body_stream.read()
+        data = body_stream.read().decode()
         return data
 
     @staticmethod
