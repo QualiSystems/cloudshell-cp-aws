@@ -61,7 +61,7 @@ class DeployAMIOperation:
         vm_details_provider,
     ):
         """# noqa
-        :param InstanceService instance_service: Instance Service
+        :param cloudshell.cp.aws.domain.services.ec2.instance.InstanceService instance_service: Instance Service
         :param InstanceCredentialsService ami_credential_service: AMI Credential Service
         :param SecurityGroupService security_group_service: Security Group Service
         :param TagService tag_service: Tag service
@@ -881,7 +881,7 @@ class DeployAMIOperation:
                 ec2_session=ec2_session, id=instance_id
             )
             logger.debug(f"Terminating instance id: {instance.id}")
-            self.instance_service.terminate_instance(instance=instance)
+            self.instance_service.terminate_instances([instance])
 
         if custom_security_group:
             logger.debug(
