@@ -94,7 +94,7 @@ class AWSModelsParser:
             last_part = key.split(".")[-1]  # get last part of namespace.
             if name == last_part:
                 return val
-        return None
+        return name, None
 
     @staticmethod
     def get_attribute_tuple_ignoring_namespace(attributes, name):
