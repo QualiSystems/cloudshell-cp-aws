@@ -1,4 +1,5 @@
 import re
+from typing import Optional, Tuple
 
 import jsonpickle
 
@@ -94,22 +95,22 @@ class AWSModelsParser:
             last_part = key.split(".")[-1]  # get last part of namespace.
             if name == last_part:
                 return val
-        return name, None
+        return None
 
     @staticmethod
-    def get_attribute_tuple_ignoring_namespace(attributes, name):
-        """# noqa
-        Finds the attribute value by name ignoring attribute namespaces.
+    def get_attribute_tuple_ignoring_namespace(
+        attributes: dict, name: str
+    ) -> Tuple[str, Optional[str]]:
+        """Finds the attribute value by name ignoring attribute namespaces.
+
         :param dict attributes: Attributes key value dict to search on.
         :param str name: Attribute name to search for.
-        :return: Attribute str value. None if not found.
-        :rtype: str
         """
         for key, val in attributes.items():
             last_part = key.split(".")[-1]  # get last part of namespace.
             if name == last_part:
                 return key, val
-        return None
+        return name, None
 
     @staticmethod
     def get_allow_all_storage_traffic_from_connected_resource_details(resource_context):
