@@ -41,7 +41,6 @@ from cloudshell.cp.aws.domain.conncetivity.operations.traffic_mirroring_operatio
     TrafficMirrorOperation,
 )
 from cloudshell.cp.aws.domain.context.aws_shell import AwsShellContext
-from cloudshell.cp.aws.domain.context.client_error import ClientErrorWrapper
 from cloudshell.cp.aws.domain.deployed_app.operations.app_ports_operation import (
     DeployedAppPortsOperation,
 )
@@ -115,8 +114,7 @@ class AWSShell:
         self.image_waiter = AMIWaiter()
         self.command_result_parser = CommandResultsParser()
         self.cancellation_service = CommandCancellationService()
-        self.client_err_wrapper = ClientErrorWrapper()
-        self.tag_service = TagService(client_err_wrapper=self.client_err_wrapper)
+        self.tag_service = TagService()
         self.ec2_instance_waiter = InstanceWaiter(
             cancellation_service=self.cancellation_service
         )

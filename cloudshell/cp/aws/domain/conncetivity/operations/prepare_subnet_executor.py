@@ -313,13 +313,13 @@ class SubnetActionHelper:
         ):
             self._cidr = aws_cp_model.vpc_cidr
             logger.info(
-                f"Decided to use VPC CIDR {self._cidr} as defined on cloud provider "
+                f"Decided to use subnet CIDR {self._cidr} as defined on cloud provider "
                 f"for subnet {alias}"
             )
         else:
             self._cidr = prepare_subnet_params.cidr
             logger.info(
-                f"Decided to use VPC CIDR {self._cidr} as defined on subnet request "
+                f"Decided to use subnet CIDR {self._cidr} as defined on subnet request "
                 f"for subnet {alias}"
             )
 
