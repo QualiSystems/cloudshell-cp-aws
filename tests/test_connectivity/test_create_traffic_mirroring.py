@@ -28,7 +28,7 @@ from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 class TestCreateTrafficMirroring(TestCase):
     def test_valid_create_returns_success_actions(self):
-        tag_service = TagService(Mock())
+        tag_service = TagService()
         session_number_service = SessionNumberService()
         traffic_mirror_service = TrafficMirrorService()
         cancellation_service = CommandCancellationService()

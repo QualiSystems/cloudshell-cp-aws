@@ -104,8 +104,8 @@ class TestDeployOperation(TestCase):
         self.deploy_operation.instance_service.get_instance_by_id.assert_called_once_with(  # noqa
             ec2_session=self.ec2_session, id=inst_id
         )
-        self.deploy_operation.instance_service.terminate_instance.assert_called_once_with(  # noqa
-            instance=instance
+        self.deploy_operation.instance_service.terminate_instances.assert_called_once_with(  # noqa
+            [instance]
         )
         self.deploy_operation.security_group_service.delete_security_group.assert_called_once_with(  # noqa
             security_group
