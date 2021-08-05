@@ -30,12 +30,6 @@ class TypeTagValues:
 class TagService:
     CREATED_BY_QUALI = "Cloudshell"
 
-    def __init__(self, client_err_wrapper):
-        """# noqa
-        :param cloudshell.cp.aws.domain.context.client_error.ClientErrorWrapper client_err_wrapper:
-        """
-        self.client_err_wrapper = client_err_wrapper
-
     def get_security_group_tags(self, name, isolation, reservation, type=None):  # noqa
         """# noqa
         returns the default tags with the isolation tag
@@ -123,15 +117,13 @@ class TagService:
 
     @retry(stop_max_attempt_number=30, wait_fixed=1000)
     def set_ec2_resource_tags(self, resource, tags):
-        """# noqa
-        Will set tags on a EC2 resource
+        """Will set tags on a EC2 resource.
+
         :param resource: EC2 resource
         :param tags: Array of key pair tags
         :type tags: list[dict]
-        :return:
         """
-        with self.client_err_wrapper.wrap():
-            resource.create_tags(Tags=tags)
+        resource.create_tags(Tags=tags)
 
     def get_created_by_kvp(self):
         return self._get_kvp(TagNames.CreatedBy, TagService.CREATED_BY_QUALI)
