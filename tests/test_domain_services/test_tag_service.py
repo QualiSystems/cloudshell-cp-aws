@@ -7,7 +7,7 @@ from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 class TestTagService(TestCase):
     def setUp(self):
-        self.tag_service = TagService(MagicMock())
+        self.tag_service = TagService()
 
     def test_get_security_group_tags(self):
         reservation_context = Mock()

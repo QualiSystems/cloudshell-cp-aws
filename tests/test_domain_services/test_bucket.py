@@ -15,7 +15,7 @@ class TestS3BucketService(TestCase):
         data = self.bucket_service.get_body_of_object(obj)
 
         self.assertTrue(obj.get.called)
-        self.assertEqual(data, body["Body"].read())
+        self.assertEqual(data, body["Body"].read().decode())
 
     def test_get_body_of_object_none(self):
         self.assertRaises(ValueError, self.bucket_service.get_body_of_object, None)
