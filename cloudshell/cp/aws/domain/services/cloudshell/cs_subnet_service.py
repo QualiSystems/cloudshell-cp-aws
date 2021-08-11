@@ -24,13 +24,18 @@ class CsSubnetService:
         vpc_cidr: str,
         logger: "Logger",
     ):
-        cidr = self._gen_new_cidr(item.action.actionParams.cidr, vpc_cidr, logger)
-        if cidr != item.action.actionParams.cidr:
+        requested_cidr = item.action.actionParams.cidr
+        cidr = self._gen_new_cidr(requested_cidr, vpc_cidr, logger)
+        if cidr != requested_cidr:
             # alias = item.action.actionParams.alias  noqa: E800
             # new_alias = self._get_alias(cidr)  noqa: E800
             # self._set_new_service_name(alias, new_alias, logger)  noqa: E800
 
             # item.action.actionParams.alias = new_alias  noqa: E800
+            logger.info(
+                f"Patch subnet CIDR to be inside the Shared VPC CIDR. Old CIDR "
+                f"'{requested_cidr}' new CIDR '{cidr}'"
+            )
             item.action.actionParams.cidr = cidr
 
     def _set_new_service_name(self, current_name, new_name, logger):
