@@ -1,4 +1,6 @@
+import ipaddress
 import traceback
+from functools import wraps
 from typing import TYPE_CHECKING
 
 from cloudshell.cp.core.models import PrepareCloudInfraResult, PrepareSubnet
@@ -35,6 +37,7 @@ class PrepareSubnetExecutor:
     class ActionItem:
         def __init__(self, action):
             self.action = action  # type: PrepareSubnet
+            self.cidr = ""
             self.subnet = None
             self.is_new_subnet = False
             self.subnet_rt = None
@@ -105,40 +108,31 @@ class PrepareSubnetExecutor:
                 self.cs_subnet_service.patch_subnet_cidr(
                     item, vpc.cidr_block, self.logger
                 )
-
-        # get existing subnet bt their cidr
         for item in action_items:
-            self._step_get_existing_subnet(item, vpc, is_multi_subnet_mode)
+            self._step_set_subnet_cidr(item, is_multi_subnet_mode)
+            self._step_validate_subnet_cidr(item, vpc)
+            self._step_get_existing_subnet(item, vpc)
 
         # create new subnet for the non-existing ones
         for item in action_items:
-            self._step_create_new_subnet_if_needed(
-                item, vpc, availability_zone, is_multi_subnet_mode
-            )
-
-        # wait for the new ones to be available
+            self._step_create_new_subnet_if_needed(item, vpc, availability_zone)
         for item in action_items:
             self._step_wait_till_available(item)
 
-        # set tags
         for item in action_items:
             self._step_set_tags(item)
-
-        # connect route table to the subnet if needed
-        for item in action_items:
             self._step_attach_to_route_table(item, vpc)
-
-        for item in action_items:
-            self._step_attach_to_vgw(item)
 
         if self.aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
             for item in action_items:
+                self._step_attach_to_vgw(item)
                 self._step_create_security_group_for_subnet(item, vpc)
 
         return [self._create_result(item) for item in action_items]
 
     # DECORATOR! First argument is the decorated function!
     def step_wrapper(step):
+        @wraps(step)
         def wrapper(self, item, *args, **kwargs):
             self.cancellation_service.check_if_cancelled(self.cancellation_context)
             if item.error:
@@ -154,59 +148,77 @@ class PrepareSubnetExecutor:
         return wrapper
 
     @step_wrapper
-    def _step_get_existing_subnet(self, item, vpc, is_multi_subnet_mode):
-        sah = SubnetActionHelper(
-            item.action.actionParams,
-            self.aws_ec2_datamodel,
-            self.logger,
-            is_multi_subnet_mode,
-        )
-        cidr = sah.cidr
-        self.logger.info(f"Check if subnet (cidr={cidr}) already exists")
-        item.subnet = self.subnet_service.get_first_or_none_subnet_from_vpc(
-            vpc=vpc, cidr=cidr
-        )
+    def _step_set_subnet_cidr(self, item: "ActionItem", is_multi_subnet_mode: bool):
+        # VPC CIDR is determined as follows:
+        #   if in VPC static mode and its a single subnet mode, use VPC CIDR
+        #   if in VPC static mode and its multi subnet mode, we must assume its manual
+        #     subnets and use action CIDR
+        #   else use action CIDR
+        alias = getattr(item.action.actionParams, "alias", "Default Subnet")
+        if (
+            self.aws_ec2_datamodel.vpc_mode is VpcMode.STATIC
+            and self.aws_ec2_datamodel.vpc_cidr
+            and not is_multi_subnet_mode
+        ):
+            cidr = self.aws_ec2_datamodel.vpc_cidr
+            self.logger.info(
+                f"Decided to use subnet CIDR {cidr} as defined on cloud provider "
+                f"for subnet {alias}"
+            )
+        else:
+            cidr = item.action.actionParams.cidr
+            self.logger.info(
+                f"Decided to use subnet CIDR {cidr} as defined on subnet request "
+                f"for subnet {alias}"
+            )
+        item.cidr = cidr
 
     @step_wrapper
-    def _step_create_new_subnet_if_needed(
-        self, item, vpc, availability_zone, is_multi_subnet_mode
-    ):
+    def _step_validate_subnet_cidr(self, item: "ActionItem", vpc: "Vpc"):
+        vpc_net = ipaddress.IPv4Network(vpc.cidr_block)
+        subnet_net = ipaddress.IPv4Network(item.cidr)
+        if not vpc_net.supernet_of(subnet_net):
+            msg = f"Subnet CIDR {item.cidr} is not inside VPC CIDR {vpc.cidr_block}"
+            raise ValueError(msg)
+
+    @step_wrapper
+    def _step_get_existing_subnet(self, item: "ActionItem", vpc: "Vpc"):
+        rid = self.reservation.reservation_id
+        self.logger.info(f"Check if subnet (cidr={item.cidr}) already exists")
+        subnet = self.subnet_service.get_first_or_none_subnet_from_vpc(vpc, item.cidr)
+        if subnet:
+            if self.tag_service.get_reservation_tag(rid) not in subnet.tags:
+                msg = (
+                    f"Requested subnet with a CIDR {item.cidr} is already used for "
+                    f"other purpose. Subnet tags: {subnet.tags}"
+                )
+                self.logger.error(msg)
+                raise ValueError(msg)
+            item.subnet = subnet
+
+    @step_wrapper
+    def _step_create_new_subnet_if_needed(self, item, vpc, availability_zone):
         if not item.subnet:
-            sah = SubnetActionHelper(
-                item.action.actionParams,
-                self.aws_ec2_datamodel,
-                self.logger,
-                is_multi_subnet_mode,
-            )
-            cidr = sah.cidr
-            item.cidr = sah.cidr
             alias = item.action.actionParams.alias
             self.logger.info(
-                "Create subnet (alias: {}, cidr: {}, availability-zone: {})".format(
-                    alias, cidr, availability_zone
-                )
+                f"Create subnet (alias: {alias}, cidr: {item.cidr}, availability-zone: "
+                f"{availability_zone})"
             )
             item.subnet = self.subnet_service.create_subnet_nowait(
-                vpc, cidr, availability_zone
+                vpc, item.cidr, availability_zone
             )
             item.is_new_subnet = True
 
     @step_wrapper
     def _step_wait_till_available(self, item):
         if item.is_new_subnet:
-            self.logger.info(
-                f"Waiting for subnet {item.action.actionParams.cidr} - start"
-            )
+            self.logger.info(f"Waiting for subnet {item.cidr} - start")
             self.subnet_waiter.wait(item.subnet, self.subnet_waiter.AVAILABLE)
-            self.logger.info(
-                f"Waiting for subnet {item.action.actionParams.cidr} - end"
-            )
+            self.logger.info(f"Waiting for subnet {item.cidr} - end")
 
     @step_wrapper
     def _step_set_tags(self, item):
-        alias = (
-            item.action.actionParams.alias or f"Subnet-{item.action.actionParams.cidr}"
-        )
+        alias = item.action.actionParams.alias or f"Subnet-{item.cidr}"
         subnet_name = self.SUBNET_RESERVATION.format(
             alias, self.reservation.reservation_id
         )
@@ -218,9 +230,7 @@ class PrepareSubnetExecutor:
         self.tag_service.set_ec2_resource_tags(item.subnet, tags)
 
     @step_wrapper
-    def _step_attach_to_route_table(
-        self, item: "PrepareSubnetExecutor.ActionItem", vpc
-    ):
+    def _step_attach_to_route_table(self, item: "ActionItem", vpc):
         if (
             item.action.actionParams.isPublic
             and self.aws_ec2_datamodel.vpc_mode is not VpcMode.SHARED
@@ -244,10 +254,10 @@ class PrepareSubnetExecutor:
         )
 
     @step_wrapper
-    def _step_attach_to_vgw(self, item: "PrepareSubnetExecutor.ActionItem"):
+    def _step_attach_to_vgw(self, item: "ActionItem"):
         if (
             item.subnet_rt
-            and item.action.actionParams.connectToVpn  # fixme VpnAccess
+            and item.action.actionParams.connectToVpn
             and self.aws_ec2_datamodel.vgw_id
             and self.aws_ec2_datamodel.vgw_cidrs
         ):
@@ -257,9 +267,7 @@ class PrepareSubnetExecutor:
                 )
 
     @step_wrapper
-    def _step_create_security_group_for_subnet(
-        self, item: "PrepareSubnetExecutor.ActionItem", vpc: "Vpc"
-    ):
+    def _step_create_security_group_for_subnet(self, item: "ActionItem", vpc: "Vpc"):
         sg_service = self.vpc_service.sg_service
         sg_name = sg_service.subnet_sg_name(item.subnet.subnet_id)
         sg = sg_service.get_security_group_by_name(vpc, sg_name)

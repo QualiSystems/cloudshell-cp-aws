@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from cloudshell.cp.aws.domain.services.ec2.tags import TagService
 from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
@@ -60,7 +60,7 @@ class SubnetService:
                 return subnet
         raise Exception(f"There isn't the subnet for the reservation '{rid}'")
 
-    def get_first_or_none_subnet_from_vpc(self, vpc, cidr=None):
+    def get_first_or_none_subnet_from_vpc(self, vpc, cidr=None) -> Optional["Subnet"]:
         subnets = list(vpc.subnets.all())
         if cidr:
             subnets = [s for s in subnets if s.cidr_block == cidr]
