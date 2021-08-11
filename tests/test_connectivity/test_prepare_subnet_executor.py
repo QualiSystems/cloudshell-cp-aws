@@ -12,7 +12,6 @@ from cloudshell.cp.core.models import (
 from cloudshell.cp.aws.domain.conncetivity.operations.prepare_subnet_executor import (
     PrepareSubnetExecutor,
 )
-from cloudshell.cp.aws.domain.services.ec2.tags import TagNames
 
 
 class TestPrepareSandboxInfra(TestCase):
@@ -75,13 +74,17 @@ class TestPrepareSandboxInfra(TestCase):
         prepare_subnet = PrepareSubnet()
         prepare_subnet.actionId = "1"
         prepare_subnet.actionParams = PrepareSubnetParams()
-        prepare_subnet.actionParams.cidr = "1.2.3.4/24"
+        prepare_subnet.actionParams.cidr = "1.2.3.0/24"
         actions = [prepare_subnet]
+        res_tag = "res tag"
         subnet = Mock()
         subnet.subnet_id = "123"
+        subnet.tags = [res_tag]
         self.subnet_service.get_first_or_none_subnet_from_vpc = Mock(
             return_value=subnet
         )
+        self.vpc_service.get_vpc.return_value = Mock(cidr_block="1.2.0.0/16")
+        self.tag_service.get_reservation_tag.return_value = res_tag
         # Act
         result = self.executor.execute(actions)[0]
         # Assert
@@ -93,13 +96,14 @@ class TestPrepareSandboxInfra(TestCase):
         prepare_subnet = PrepareSubnet()
         prepare_subnet.actionId = "1"
         prepare_subnet.actionParams = PrepareSubnetParams()
-        prepare_subnet.actionParams.cidr = "1.2.3.4/24"
+        prepare_subnet.actionParams.cidr = "1.2.3.0/24"
 
         actions = [prepare_subnet]
         self.subnet_service.get_first_or_none_subnet_from_vpc = Mock(return_value=None)
         subnet = Mock()
         subnet.subnet_id = "456"
         self.subnet_service.create_subnet_nowait = Mock(return_value=subnet)
+        self.vpc_service.get_vpc.return_value = Mock(cidr_block="1.2.0.0/16")
         # Act
         result = self.executor.execute(actions)[0]
         # Assert
@@ -108,18 +112,18 @@ class TestPrepareSandboxInfra(TestCase):
 
     def test_execute_sets_tags(self):
         # Arrange
-        def return_public_tag_with_value(*args, **kwargs):
-            return {"Key": TagNames.IsPublic, "Value": args[0]}
-
         prepare_subnet = PrepareSubnet()
         prepare_subnet.actionId = "1"
         prepare_subnet.actionParams = PrepareSubnetParams()
-        prepare_subnet.actionParams.cidr = "1.2.3.4/24"
+        prepare_subnet.actionParams.cidr = "1.2.3.0/24"
         prepare_subnet.actionParams.alias = "MySubnet"
         actions = [prepare_subnet]
+        self.vpc_service.get_vpc.return_value = Mock(cidr_block="1.2.0.0/16")
 
         self.reservation.reservation_id = "123"
+        res_tag = "res tag"
         subnet = Mock()
+        subnet.tags = [res_tag]
         self.subnet_service.get_first_or_none_subnet_from_vpc = Mock(
             return_value=subnet
         )
@@ -127,7 +131,7 @@ class TestPrepareSandboxInfra(TestCase):
         self.tag_service.get_is_public_tag = Mock(return_value=is_public_tag)
         default_tags = [Mock()]
         self.tag_service.get_default_tags = Mock(return_value=default_tags)
-
+        self.tag_service.get_reservation_tag.return_value = res_tag
         # Act
         self.executor.execute(actions)
 
@@ -142,10 +146,18 @@ class TestPrepareSandboxInfra(TestCase):
         prepare_subnet = PrepareSubnet()
         prepare_subnet.actionId = "1"
         prepare_subnet.actionParams = PrepareSubnetParams()
-        prepare_subnet.actionParams.cidr = "1.2.3.4/24"
+        prepare_subnet.actionParams.cidr = "1.2.3.0/24"
         prepare_subnet.actionParams.isPublic = False
         actions = [prepare_subnet]
+        rt = Mock()
+        subnet = Mock()
+        self.vpc_service.get_or_throw_private_route_table.return_value = rt
+        self.vpc_service.get_vpc.return_value = Mock(cidr_block="1.2.0.0/16")
+        self.subnet_service.create_subnet_nowait.return_value = subnet
+        self.subnet_service.get_first_or_none_subnet_from_vpc.return_value = None
         # Act
         self.executor.execute(actions)
         # Assert
-        self.subnet_service.set_subnet_route_table.assert_called_once()
+        self.subnet_service.set_subnet_route_table.assert_called_once_with(
+            self.ec2_client, subnet.subnet_id, rt.route_table_id
+        )
