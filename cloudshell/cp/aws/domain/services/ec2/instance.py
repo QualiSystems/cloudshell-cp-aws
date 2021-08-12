@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING, List
 
-from cloudshell.cp.aws.common import retry_helper
-
 if TYPE_CHECKING:
+    from mypy_boto3_ec2 import EC2ServiceResource
     from mypy_boto3_ec2.service_resource import Instance, Vpc
 
     from cloudshell.cp.aws.domain.services.ec2.tags import TagService
+    from cloudshell.cp.aws.models.ami_deployment_model import AMIDeploymentModel
 
 
 class InstanceService:
@@ -20,27 +20,9 @@ class InstanceService:
 
     def create_instance(
         self,
-        ec2_session,
-        name,
-        reservation,
-        ami_deployment_info,
-        ec2_client,
-        wait_for_status_check,
-        cancellation_context,
-        logger,
-    ):
-        """# noqa
-        Deploys an AMI
-        :param wait_for_status_check: bool
-        :param ec2_client: boto3.ec2.client
-        :param str name: Will assign the deployed vm with the name
-        :param cloudshell.cp.aws.models.reservation_model.ReservationModel reservation: reservation model
-        :param boto3.ec2.session ec2_session:
-        :param cloudshell.cp.aws.models.ami_deployment_model.AMIDeploymentModel ami_deployment_info: request details of the AMI
-        :param CancellationContext cancellation_context:
-        :param logging.Logger logger: logger
-        :return:
-        """
+        ec2_session: "EC2ServiceResource",
+        ami_deployment_info: "AMIDeploymentModel",
+    ) -> "Instance":
         instance = ec2_session.create_instances(
             ImageId=ami_deployment_info.aws_ami_id,
             MinCount=ami_deployment_info.min_count,
@@ -52,19 +34,6 @@ class InstanceService:
             IamInstanceProfile=ami_deployment_info.iam_role,
             UserData=ami_deployment_info.user_data,
         )[0]
-
-        self.wait_for_instance_to_run_in_aws(
-            ec2_client=ec2_client,
-            instance=instance,
-            wait_for_status_check=wait_for_status_check,
-            cancellation_context=cancellation_context,
-            logger=logger,
-        )
-
-        self._set_tags(instance, name, reservation, ami_deployment_info.custom_tags)
-
-        # Reload the instance attributes
-        retry_helper.do_with_retry(lambda: instance.load())
         return instance
 
     def wait_for_instance_to_run_in_aws(
@@ -107,7 +76,7 @@ class InstanceService:
             instances, self.instance_waiter.TERMINATED
         )
 
-    def _set_tags(self, instance, name, reservation, custom_tags):
+    def set_tags(self, instance, name, reservation, custom_tags):
         # todo create the name with a name generator
         new_name = name + " " + instance.instance_id
         default_tags = self.tags_creator_service.get_default_tags(
