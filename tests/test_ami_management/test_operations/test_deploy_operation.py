@@ -214,14 +214,8 @@ class TestDeployOperation(TestCase):
         )
 
         self.instance_service.create_instance.assert_called_once_with(
-            ec2_session=self.ec2_session,
-            name=inst_name,
-            reservation=reservation,
-            ami_deployment_info=ami_deployment_info,
-            ec2_client=self.ec2_client,
-            wait_for_status_check=ami_datamodel.wait_for_status_check,
-            cancellation_context=cancellation_context,
-            logger=self.logger,
+            self.ec2_session,
+            ami_deployment_info,
         )
 
         self.deploy_operation.elastic_ip_service.set_elastic_ips.assert_called_once_with(  # noqa
@@ -307,14 +301,8 @@ class TestDeployOperation(TestCase):
         )
 
         self.instance_service.create_instance.assert_called_once_with(
-            ec2_session=self.ec2_session,
-            name=inst_name,
-            reservation=reservation,
-            ami_deployment_info=ami_deployment_info,
-            ec2_client=self.ec2_client,
-            wait_for_status_check=ami_datamodel.wait_for_status_check,
-            cancellation_context=cancellation_context,
-            logger=self.logger,
+            self.ec2_session,
+            ami_deployment_info,
         )
 
         self.deploy_operation.elastic_ip_service.set_elastic_ips.assert_called_once_with(  # noqa

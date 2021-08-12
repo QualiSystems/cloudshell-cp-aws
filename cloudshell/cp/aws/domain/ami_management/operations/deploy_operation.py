@@ -11,6 +11,7 @@ from cloudshell.cp.core.models import (
 )
 from cloudshell.cp.core.utils import convert_dict_to_attributes_list
 
+from cloudshell.cp.aws.common import retry_helper
 from cloudshell.cp.aws.domain.common.list_helper import first_or_default
 from cloudshell.cp.aws.domain.services.ec2.security_group import SecurityGroupService
 from cloudshell.cp.aws.domain.services.ec2.tags import IsolationTagValues, TypeTagValues
@@ -162,16 +163,9 @@ class DeployAMIOperation:
             )
 
             instance = self.instance_service.create_instance(
-                ec2_session=ec2_session,
-                name=name,
-                reservation=reservation,
-                ami_deployment_info=ami_deployment_info,
-                ec2_client=ec2_client,
-                wait_for_status_check=ami_deployment_model.wait_for_status_check,
-                cancellation_context=cancellation_context,
-                logger=logger,
+                ec2_session,
+                ami_deployment_info,
             )
-
             logger.info("Instance created, populating results with interface data")
             self.instance_service.wait_for_instance_to_run_in_aws(
                 ec2_client=ec2_client,
@@ -180,6 +174,11 @@ class DeployAMIOperation:
                 cancellation_context=cancellation_context,
                 logger=logger,
             )
+            self.instance_service.set_tags(
+                instance, name, reservation, ami_deployment_info.custom_tags
+            )
+            # Reload the instance attributes
+            retry_helper.do_with_retry(lambda: instance.load())
 
             self._populate_network_config_results_with_interface_data(
                 instance=instance, network_config_results=network_config_results
