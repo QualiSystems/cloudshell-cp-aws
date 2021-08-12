@@ -24,7 +24,6 @@ class TestInstanceService(TestCase):
     def test_create_instance(self):
         ami_dep = Mock()
         ami_dep.custom_tags = ""
-        cancellation_context = Mock()
         new_instance = Mock()
         new_instance.instance_id = "id"
         volume_1 = Mock()
@@ -35,14 +34,8 @@ class TestInstanceService(TestCase):
         self.ec2_session.create_instances = Mock(return_value=[new_instance])
 
         res = self.instance_service.create_instance(
-            ec2_session=self.ec2_session,
-            name=self.name,
-            reservation=self.reservation_id,
-            ami_deployment_info=ami_dep,
-            ec2_client=self.ec2_client,
-            wait_for_status_check=False,
-            cancellation_context=cancellation_context,
-            logger=Mock(),
+            self.ec2_session,
+            ami_dep,
         )
 
         self.ec2_session.create_instances.assert_called_once_with(
@@ -56,27 +49,6 @@ class TestInstanceService(TestCase):
             NetworkInterfaces=ami_dep.network_interfaces,
             UserData=ami_dep.user_data,
         )
-
-        self.instance_waiter.wait.assert_called_once_with(
-            instance=new_instance,
-            state=self.instance_waiter.RUNNING,
-            cancellation_context=cancellation_context,
-        )
-
-        self.tag_service.get_default_tags.assert_called_with(
-            self.name + " " + new_instance.instance_id, self.reservation_id
-        )
-
-        self.tag_service.set_ec2_resource_tags.assert_any_call(
-            new_instance, self.default_tags
-        )
-        self.tag_service.set_ec2_resource_tags.assert_any_call(
-            volume_2, self.default_tags
-        )
-        self.tag_service.set_ec2_resource_tags.assert_any_call(
-            volume_1, self.default_tags
-        )
-        self.assertTrue(new_instance.load.called)
         self.assertEqual(new_instance, res)
 
     def test_get_instance_by_id(self):
