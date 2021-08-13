@@ -10,6 +10,8 @@ from cloudshell.cp.aws.domain.conncetivity.operations.traffic_mirror_cleaner imp
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 if TYPE_CHECKING:
+    from logging import Logger
+
     from mypy_boto3_ec2 import EC2ServiceResource
     from mypy_boto3_ec2.service_resource import RouteTable, Subnet, Vpc
 
@@ -191,29 +193,23 @@ class VPCService:
     def get_vpc_by_id(ec2_session: "EC2ServiceResource", vpc_id: str) -> "Vpc":
         return ec2_session.Vpc(vpc_id)
 
-    def peer_vpcs(self, ec2_session, vpc_id1, vpc_id2, reservation_model, logger):
-        """# noqa
-        Will create a peering request between 2 vpc's and approve it
-        :param logger:
-        :param ec2_session: EC2 session
-        :param vpc_id1: VPC Id
-        :type vpc_id1: str
-        :param vpc_id2: VPC Id
-        :type vpc_id2: str
-        :param reservation_model:
-        :type reservation_model: cloudshell.cp.aws.models.reservation_model.ReservationModel  # noqa: E501
-        :return: vpc peering id
-        """
-
+    def peer_vpcs(
+        self,
+        ec2_session: "EC2ServiceResource",
+        vpc_id1: str,
+        vpc_id2: str,
+        reservation_model: "ReservationModel",
+        logger: "Logger",
+    ) -> str:
+        """Will create a peering request between 2 vpc's and approve it."""
         # create peering connection
-        logger.info(f"Creating VPC Peering between {vpc_id1} to {vpc_id1} ")
+        logger.info(f"Creating VPC Peering between {vpc_id1} to {vpc_id2} ")
         vpc_peer_connection = ec2_session.create_vpc_peering_connection(
             VpcId=vpc_id1, PeerVpcId=vpc_id2
         )
         logger.info(
-            "VPC Peering created {} ,State : {} ".format(
-                vpc_peer_connection.id, vpc_peer_connection.status["Code"]
-            )
+            f"VPC Peering created {vpc_peer_connection.id}, "
+            f"State : {vpc_peer_connection.status['Code']}"
         )
 
         # wait until pending acceptance
@@ -221,7 +217,7 @@ class VPCService:
         self.vpc_peering_waiter.wait(
             vpc_peer_connection, self.vpc_peering_waiter.PENDING_ACCEPTANCE
         )
-        logger.info("VPC peering state {}".format(vpc_peer_connection.status["Code"]))
+        logger.info(f"VPC peering state {vpc_peer_connection.status['Code']}")
 
         # accept peering request (will try 3 times)
         self.accept_vpc_peering(vpc_peer_connection, logger)
@@ -233,7 +229,7 @@ class VPCService:
         self.vpc_peering_waiter.wait(
             vpc_peer_connection, self.vpc_peering_waiter.ACTIVE
         )
-        logger.info("VPC peering state {}".format(vpc_peer_connection.status["Code"]))
+        logger.info(f"VPC peering state {vpc_peer_connection.status['Code']}")
 
         # set tags on peering connection
         tags = self.tag_service.get_default_tags(
@@ -291,25 +287,18 @@ class VPCService:
         """
         return list(vpc.internet_gateways.all())
 
-    def create_and_attach_internet_gateway(self, ec2_session, vpc, reservation):
-        """Create.
-
-        :param ec2_session:
-        :param vpc:
-        :param reservation: reservation model
-        :type reservation: cloudshell.cp.aws.models.reservation_model.ReservationModel
-        :return: returns the IG id
-        """
+    def create_and_attach_internet_gateway(
+        self,
+        ec2_session: "EC2ServiceResource",
+        vpc: "Vpc",
+        reservation: "ReservationModel",
+    ) -> str:
         internet_gateway = ec2_session.create_internet_gateway()
-
         tags = self.tag_service.get_default_tags(
             f"IGW {reservation.reservation_id}", reservation
         )
-
         self.tag_service.set_ec2_resource_tags(resource=internet_gateway, tags=tags)
-
         vpc.attach_internet_gateway(InternetGatewayId=internet_gateway.id)
-
         return internet_gateway.id
 
     def remove_all_peering(self, vpc):
