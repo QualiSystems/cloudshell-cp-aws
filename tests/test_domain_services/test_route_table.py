@@ -1,8 +1,6 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-import pytest
-
 from cloudshell.cp.aws.domain.services.ec2.route_table import RouteTablesService
 
 
@@ -149,7 +147,6 @@ class TestRouteTableService(TestCase):
         # Assert
         self.assertEqual(results, [tables[1], tables[2]])
 
-    @pytest.mark.skip(reason="skip for now")
     def test_create_route_table(self):
         # Arrange
         table = Mock()
@@ -158,9 +155,8 @@ class TestRouteTableService(TestCase):
         self.tag_service.get_default_tags = Mock(return_value=tags)
         # Act
         self.route_table_service.create_route_table(
-            ec2_session=self.ec2_session,
-            reservation=self.reservation,
-            vpc_id=self.vpc_id,
+            self.vpc,
+            self.reservation,
             table_name="MyTable",
         )
         # Assert
@@ -170,19 +166,18 @@ class TestRouteTableService(TestCase):
         )
         self.tag_service.set_ec2_resource_tags.assert_called_once_with(table, tags)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_get_route_table(self):
         # Arrange
         table = Mock()
         table.tags = [{"Key": "Name", "Value": "Table1"}]
-        self.route_table_service.get_all_route_tables = Mock(return_value=[table])
+        self.tag_service.get_name_tag.side_effect = lambda name: {
+            "Key": "Name",
+            "Value": name,
+        }
+        self.vpc.route_tables.all.return_value = [table]
         # Act
-        table1 = self.route_table_service.get_route_table(
-            ec2_session=self.ec2_session, vpc_id=self.vpc_id, table_name="Table1"
-        )
-        table2 = self.route_table_service.get_route_table(
-            ec2_session=self.ec2_session, vpc_id=self.vpc_id, table_name="Table2"
-        )
+        table1 = self.route_table_service.get_route_table(self.vpc, table_name="Table1")
+        table2 = self.route_table_service.get_route_table(self.vpc, "Table2")
         # Assert
         self.assertEqual(table1, table)
         self.assertEqual(table2, None)

@@ -1,8 +1,6 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, call
 
-import pytest
-
 from cloudshell.cp.core.models import (
     ConnectSubnet,
     ConnectToSubnetParams,
@@ -628,9 +626,9 @@ class TestDeployOperation(TestCase):
         # iam role name
         self.assertTrue(aws_model.iam_role["Arn"] == ami_model.iam_role)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_network_interfaces_multi_subnets_with_public_ip(self):
         ami_model = Mock()
+        vpc = Mock()
         ami_model.add_public_ip = True
         ami_model.network_configurations = [Mock(), Mock()]
 
@@ -640,15 +638,17 @@ class TestDeployOperation(TestCase):
             ValueError, "Public IP option is not supported with multiple subnets"
         ):
             self.deploy_operation._prepare_network_interfaces(
+                vpc=vpc,
                 ami_deployment_model=ami_model,
                 network_actions=network_actions,
-                vpc=Mock(),
                 security_group_ids=MagicMock(),
                 network_config_results=MagicMock(),
+                reservation=Mock(),
+                aws_model=Mock(),
+                ec2_session=self.ec2_session,
                 logger=self.logger,
             )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_network_interfaces_multi_subnets(self):
         def build_network_interface_handler(*args, **kwargs):
             return {"SubnetId": kwargs["subnet_id"]}
@@ -684,11 +684,14 @@ class TestDeployOperation(TestCase):
 
         # act
         net_interfaces = self.deploy_operation._prepare_network_interfaces(
+            vpc=vpc,
             ami_deployment_model=ami_model,
             network_actions=network_actions,
-            vpc=vpc,
             security_group_ids=security_group_ids,
             network_config_results=network_config_results,
+            reservation=Mock(),
+            aws_model=Mock(),
+            ec2_session=self.ec2_session,
             logger=self.logger,
         )
 
@@ -753,11 +756,10 @@ class TestDeployOperation(TestCase):
         self.assertTrue('"Public IP": "pub1"' in dto1.interface)
         self.assertTrue('"MAC Address": "mac1"' in dto1.interface)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_deploy_raised_no_vpc(self):
         # arrange
         my_vpc_service = Mock()
-        my_vpc_service.find_vpc_for_reservation = Mock(return_value=None)
+        my_vpc_service.get_vpc.return_value = None
         deploy_operation = DeployAMIOperation(
             self.instance_service,
             self.credentials_manager,
@@ -782,7 +784,7 @@ class TestDeployOperation(TestCase):
                 reservation=Mock(),
                 aws_ec2_cp_resource_model=Mock(),
                 ami_deploy_action=Mock(),
-                network_actions=Mock(),
+                network_actions=[Mock()],
                 ec2_client=Mock(),
                 cancellation_context=Mock(),
                 logger=self.logger,

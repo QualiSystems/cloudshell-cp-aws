@@ -1,8 +1,6 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-import pytest
-
 from cloudshell.cp.core.models import DeployApp
 
 from cloudshell.cp.aws.aws_shell import AWSShell
@@ -115,7 +113,6 @@ class TestAWSShell(TestCase):
         )
         self.assertEquals(result, '{"driverResponse": {"actionResults": [true]}}')
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_connectivity(self):
         # Assert
         cancellation_context = Mock()
@@ -123,11 +120,16 @@ class TestAWSShell(TestCase):
         self.aws_shell.prepare_connectivity_operation.prepare_connectivity = Mock(
             return_value=True
         )
-        res = None
         actions_mock = Mock()
+        cs_subnet_service_inst = Mock()
 
-        with patch("cloudshell.cp.aws.aws_shell.AwsShellContext") as shell_context:
+        with patch(
+            "cloudshell.cp.aws.aws_shell.AwsShellContext"
+        ) as shell_context, patch(
+            "cloudshell.cp.aws.aws_shell.CsSubnetService"
+        ) as cs_subnet_service:
             shell_context.return_value = self.mock_context
+            cs_subnet_service.return_value = cs_subnet_service_inst
 
             # Act
             res = self.aws_shell.prepare_connectivity(
@@ -135,14 +137,21 @@ class TestAWSShell(TestCase):
             )
 
             # Assert
-            self.aws_shell.prepare_connectivity_operation.prepare_connectivity.assert_called_with(  # noqa: E501
+            prepare_connectivity = (
+                self.aws_shell.prepare_connectivity_operation.prepare_connectivity
+            )
+            prepare_connectivity.assert_called_with(
                 ec2_client=self.expected_shell_context.aws_api.ec2_client,
+                default_ec2_session=(
+                    self.expected_shell_context.aws_api.default_ec2_session
+                ),
                 ec2_session=self.expected_shell_context.aws_api.ec2_session,
                 s3_session=self.expected_shell_context.aws_api.s3_session,
                 reservation=self.reservation_model,
                 aws_ec2_datamodel=self.expected_shell_context.aws_ec2_resource_model,
                 actions=actions_mock,
                 cancellation_context=cancellation_context,
+                cs_subnet_service=cs_subnet_service_inst,
                 logger=self.expected_shell_context.logger,
             )
             self.assertEqual(res, True)
