@@ -1,8 +1,6 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
-
 from cloudshell.cp.core.models import (
     CreateKeys,
     PrepareCloudInfra,
@@ -25,6 +23,7 @@ class TestPrepareSandboxInfra(TestCase):
         self.sg_serv = Mock()
         self.key_pair_serv = Mock()
         self.ec2_session = Mock()
+        self.default_ec2_session = Mock()
         self.ec2_client = Mock()
         self.s3_session = Mock()
         self.aws_dm = Mock()
@@ -36,6 +35,8 @@ class TestPrepareSandboxInfra(TestCase):
         self.cancellation_context = Mock()
         self.subnet_service = Mock()
         self.subnet_waiter = Mock()
+        self.cs_subnet_service = Mock()
+        self.logger = Mock()
         self.prepare_conn = PrepareSandboxInfraOperation(
             self.vpc_serv,
             self.sg_serv,
@@ -48,21 +49,22 @@ class TestPrepareSandboxInfra(TestCase):
         )
 
     def test_prepare_conn_must_receive_network_action(self):
-        with self.assertRaises(
-            Exception, msg="Actions list must contain a PrepareCloudInfraAction."
+        with self.assertRaisesRegex(
+            Exception, "Actions list must contain a PrepareCloudInfraAction."
         ):
             self.prepare_conn.prepare_connectivity(
                 ec2_client=self.ec2_client,
+                default_ec2_session=self.default_ec2_session,
                 ec2_session=self.ec2_session,
                 s3_session=self.s3_session,
                 reservation=self.reservation,
                 aws_ec2_datamodel=self.aws_dm,
                 actions=[PrepareSubnet()],
                 cancellation_context=self.cancellation_context,
-                logger=Mock(),
+                cs_subnet_service=self.cs_subnet_service,
+                logger=self.logger,
             )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_conn_execute_the_network_action_first(self):
         # Arrage
         actions = []
@@ -84,13 +86,15 @@ class TestPrepareSandboxInfra(TestCase):
         # Act
         results = self.prepare_conn.prepare_connectivity(
             ec2_client=self.ec2_client,
+            default_ec2_session=self.default_ec2_session,
             ec2_session=self.ec2_session,
             s3_session=self.s3_session,
             reservation=self.reservation,
             aws_ec2_datamodel=self.aws_dm,
             actions=actions,
             cancellation_context=self.cancellation_context,
-            logger=Mock(),
+            cs_subnet_service=self.cs_subnet_service,
+            logger=self.logger,
         )
         # Assert
         self.assertEqual(len(results), 4)
@@ -99,7 +103,6 @@ class TestPrepareSandboxInfra(TestCase):
         self.assertEqual(results[2].actionId, "SubA")
         self.assertEqual(results[3].actionId, "SubB")
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_conn_execute_the_subnet_actions(self):
         # Arrage
         actions = []
@@ -128,20 +131,21 @@ class TestPrepareSandboxInfra(TestCase):
             ctor.return_value = obj
             results = self.prepare_conn.prepare_connectivity(
                 ec2_client=self.ec2_client,
+                default_ec2_session=self.default_ec2_session,
                 ec2_session=self.ec2_session,
                 s3_session=self.s3_session,
                 reservation=self.reservation,
                 aws_ec2_datamodel=self.aws_dm,
                 actions=actions,
                 cancellation_context=self.cancellation_context,
-                logger=Mock(),
+                cs_subnet_service=self.cs_subnet_service,
+                logger=self.logger,
             )
         # Assert
         self.assertEqual(len(results), 4)
         self.assertEqual(results[2], "ResA")
         self.assertEqual(results[3], "ResB")
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_conn_command(self):
         # Arrange
         action = PrepareCloudInfra()
@@ -158,13 +162,15 @@ class TestPrepareSandboxInfra(TestCase):
 
         results = self.prepare_conn.prepare_connectivity(
             ec2_client=self.ec2_client,
+            default_ec2_session=self.default_ec2_session,
             ec2_session=self.ec2_session,
             s3_session=self.s3_session,
             reservation=self.reservation,
             aws_ec2_datamodel=self.aws_dm,
             actions=[action, action2],
             cancellation_context=self.cancellation_context,
-            logger=Mock(),
+            cs_subnet_service=self.cs_subnet_service,
+            logger=self.logger,
         )
 
         self.assertEqual(results[0].actionId, action.actionId)
@@ -182,28 +188,26 @@ class TestPrepareSandboxInfra(TestCase):
         self.assertEqual(results[1].accessKey, access_key)
         self.cancellation_service.check_if_cancelled.assert_called()
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_conn_command_no_management_vpc(self):
-        request = Mock()
         aws_dm = Mock()
         cancellation_context = Mock()
         aws_dm.aws_management_vpc_id = None
-        self.assertRaises(
-            ValueError,
-            self.prepare_conn.prepare_connectivity,
-            self.ec2_client,
-            self.ec2_session,
-            self.s3_session,
-            self.reservation,
-            aws_dm,
-            request,
-            cancellation_context,
-            Mock(),
-        )
+        with self.assertRaises(ValueError):
+            self.prepare_conn.prepare_connectivity(
+                self.ec2_client,
+                self.default_ec2_session,
+                self.ec2_session,
+                self.s3_session,
+                self.reservation,
+                aws_dm,
+                [],
+                cancellation_context,
+                self.cs_subnet_service,
+                self.logger,
+            )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_conn_error_no_vpc_with_vpc_count(self):
-        self.vpc_serv.find_vpc_for_reservation = Mock(return_value=None)
+        self.vpc_serv.get_vpc.return_value = None
 
         vpc_count = 50
         self.vpc_serv.get_active_vpcs_count = Mock(return_value=vpc_count)
@@ -227,21 +231,20 @@ class TestPrepareSandboxInfra(TestCase):
         actions.append(prepare_create_key)
 
         # Assert
-        self.assertRaisesRegexp(
-            ValueError,
-            f"(/{vpc_count}/)|(limit.$)",
-            self.prepare_conn.prepare_connectivity,
-            ec2_client=self.ec2_client,
-            ec2_session=self.ec2_session,
-            s3_session=self.s3_session,
-            reservation=self.reservation,
-            aws_ec2_datamodel=self.aws_dm,
-            actions=actions,
-            cancellation_context=self.cancellation_context,
-            logger=Mock(),
-        )
+        with self.assertRaisesRegexp(ValueError, f"(/{vpc_count}/)|(limit.$)"):
+            self.prepare_conn.prepare_connectivity(
+                ec2_client=self.ec2_client,
+                default_ec2_session=self.default_ec2_session,
+                ec2_session=self.ec2_session,
+                s3_session=self.s3_session,
+                reservation=self.reservation,
+                aws_ec2_datamodel=self.aws_dm,
+                actions=actions,
+                cancellation_context=self.cancellation_context,
+                cs_subnet_service=self.cs_subnet_service,
+                logger=self.logger,
+            )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_conn_error_no_vpc(self):
         self.vpc_serv.find_vpc_for_reservation = Mock(return_value=None)
         self.vpc_serv.get_active_vpcs_count = Mock(return_value=None)
@@ -262,21 +265,20 @@ class TestPrepareSandboxInfra(TestCase):
         actions.append(prepare_subnet_sub_b)
 
         # Assert
-        self.assertRaisesRegexp(
-            ValueError,
-            "^((?!limit).)*$",
-            self.prepare_conn.prepare_connectivity,
-            ec2_client=self.ec2_client,
-            ec2_session=self.ec2_session,
-            s3_session=self.s3_session,
-            reservation=self.reservation,
-            aws_ec2_datamodel=self.aws_dm,
-            actions=actions,
-            cancellation_context=self.cancellation_context,
-            logger=Mock(),
-        )
+        with self.assertRaisesRegexp(ValueError, "^((?!limit).)*$"):
+            self.prepare_conn.prepare_connectivity(
+                ec2_client=self.ec2_client,
+                default_ec2_session=self.default_ec2_session,
+                ec2_session=self.ec2_session,
+                s3_session=self.s3_session,
+                reservation=self.reservation,
+                aws_ec2_datamodel=self.aws_dm,
+                actions=actions,
+                cancellation_context=self.cancellation_context,
+                cs_subnet_service=self.cs_subnet_service,
+                logger=self.logger,
+            )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_prepare_conn_command_fault_res(self):
         self.aws_dm.is_static_vpc_mode = False
 
@@ -290,13 +292,15 @@ class TestPrepareSandboxInfra(TestCase):
 
         results = self.prepare_conn.prepare_connectivity(
             ec2_client=self.ec2_client,
+            default_ec2_session=self.default_ec2_session,
             ec2_session=self.ec2_session,
             s3_session=self.s3_session,
             reservation=self.reservation,
             aws_ec2_datamodel=self.aws_dm,
             actions=[action, action2],
             cancellation_context=cancellation_context,
-            logger=Mock(),
+            cs_subnet_service=self.cs_subnet_service,
+            logger=self.logger,
         )
 
         self.assertFalse(results[0].success)
@@ -491,12 +495,11 @@ class TestPrepareSandboxInfra(TestCase):
         )
         self.assertEqual(sg, res)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_get_or_create_vpc(self):
         cidr = Mock()
         vpc = Mock()
         vpc_service = Mock()
-        vpc_service.find_vpc_for_reservation = Mock(return_value=None)
+        vpc_service.get_vpc = Mock(return_value=None)
         vpc_service.create_vpc_for_reservation = Mock(return_value=vpc)
 
         prepare_conn = PrepareSandboxInfraOperation(
@@ -511,11 +514,16 @@ class TestPrepareSandboxInfra(TestCase):
         )
 
         result = prepare_conn._get_or_create_vpc(
-            cidr=cidr, ec2_session=self.ec2_session, reservation=self.reservation
+            cidr=cidr,
+            ec2_session=self.ec2_session,
+            reservation=self.reservation,
+            aws_model=self.aws_dm,
         )
 
-        vpc_service.find_vpc_for_reservation.assert_called_once_with(
-            ec2_session=self.ec2_session, reservation_id=self.reservation.reservation_id
+        vpc_service.get_vpc.assert_called_once_with(
+            self.ec2_session,
+            self.reservation.reservation_id,
+            self.aws_dm,
         )
 
         vpc_service.create_vpc_for_reservation.assert_called_once_with(

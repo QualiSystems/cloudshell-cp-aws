@@ -1,13 +1,12 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-import pytest
-
 from cloudshell.cp.core.models import PrepareCloudInfra
 
 from cloudshell.cp.aws.domain.conncetivity.operations.cleanup import (
     CleanupSandboxInfraOperation,
 )
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 
 class TestCleanupSandboxInfra(TestCase):
@@ -16,7 +15,7 @@ class TestCleanupSandboxInfra(TestCase):
         self.key_pair_serv = Mock()
         self.s3_session = Mock()
         self.ec2_session = Mock()
-        self.aws_ec2_data_model = Mock()
+        self.aws_ec2_data_model = Mock(vpc_mode=VpcMode.DYNAMIC)
         self.reservation_id = Mock()
         self.route_table_service = Mock()
         self.traffic_mirror_service = Mock()
@@ -27,7 +26,6 @@ class TestCleanupSandboxInfra(TestCase):
             self.traffic_mirror_service,
         )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_cleanup(self):
         self.route_table_service.get_all_route_tables = Mock(
             return_value=[Mock(), Mock()]
@@ -60,14 +58,13 @@ class TestCleanupSandboxInfra(TestCase):
         self.assertTrue(self.vpc_serv.remove_all_peering.called_with(vpc))
         self.assertTrue(self.vpc_serv.delete_vpc.called_with(vpc))
         self.route_table_service.get_all_route_tables.assert_called_once_with(
-            ec2_session=self.ec2_session,
-            vpc_id=self.aws_ec2_data_model.aws_management_vpc_id,
+            self.ec2_session,
+            self.aws_ec2_data_model.aws_management_vpc_id,
         )
         self.assertEquals(
             self.route_table_service.delete_blackhole_routes.call_count, 2
         )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_cleanup_no_vpc(self):
         vpc_serv = Mock()
         vpc_serv.find_vpc_for_reservation = Mock(return_value=None)

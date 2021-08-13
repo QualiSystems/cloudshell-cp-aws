@@ -1,8 +1,6 @@
 from unittest import TestCase
 from unittest.mock import Mock, call
 
-import pytest
-
 from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
 from cloudshell.cp.aws.domain.services.waiters.vpc_peering import (
     VpcPeeringConnectionWaiter,
@@ -168,24 +166,19 @@ class TestVPCService(TestCase):
         self.assertFalse(peering1.delete.called)
         self.assertTrue(peering2.delete.called)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_remove_all_sgs(self):
         sg = Mock()
-        self.vpc.security_groups = Mock()
-        self.vpc.security_groups.all = Mock(return_value=[sg])
+        self.vpc.security_groups.all.return_value = [sg]
+        self.sg_service.sort_sg_list.return_value = [sg]
 
-        res = self.vpc_service.remove_all_security_groups(
-            self.vpc, self.reservation.reservation_id
-        )
+        self.vpc_service.remove_all_security_groups(self.vpc)
 
-        self.assertIsNotNone(res)
         self.sg_service.delete_security_group.assert_called_once_with(sg)
 
     # When a trying to delete security group(isolated) and it is referenced in
     # another's group rule.
     # we get resource sg-XXXXXX has a dependent object, so to fix that ,
     # isolated group shall be deleted last.
-    @pytest.mark.skip(reason="skip for now")
     def test_remove_all_sgs_isolated_group_removed_last(self):
         sg = Mock()
         sg.group_name = "dummy"
@@ -195,15 +188,13 @@ class TestVPCService(TestCase):
         )
         isolated_at_start_sgs = [isolated_sg, sg]
         isolated_at_end_sgs_calls = [call(sg), call(isolated_sg)]
+        self.sg_service.sort_sg_list.return_value = [sg, isolated_sg]
 
         self.vpc.security_groups = Mock()
         self.vpc.security_groups.all = Mock(return_value=isolated_at_start_sgs)
 
-        res = self.vpc_service.remove_all_security_groups(
-            self.vpc, self.reservation.reservation_id
-        )
+        self.vpc_service.remove_all_security_groups(self.vpc)
 
-        self.assertIsNotNone(res)
         self.sg_service.delete_security_group.assert_has_calls(
             isolated_at_end_sgs_calls, any_order=False
         )
@@ -280,53 +271,47 @@ class TestVPCService(TestCase):
             reservation=self.reservation,
         )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_get_or_create_private_route_table_1(self):  # Scenario(1): Get
         # Arrange
         table = Mock()
         self.route_table_service.get_route_table = Mock(return_value=table)
         # Act
         result = self.vpc_service.get_or_create_private_route_table(
-            ec2_session=self.ec2_session,
-            reservation=self.reservation,
-            vpc_id=self.vpc_id,
+            self.vpc,
+            self.reservation,
         )
         # Assert
         self.assertEqual(result, table)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_get_or_create_private_route_table_2(self):  # Scenario(2): Create
         # Arrange
         table = Mock()
         self.reservation.reservation_id = "123"
-        self.route_table_service.get_route_table = Mock(return_value=None)
-        self.route_table_service.create_route_table = Mock(return_value=table)
+        self.route_table_service.get_route_table.return_value = None
+        self.route_table_service.create_route_table.return_value = table
         # Act
         result = self.vpc_service.get_or_create_private_route_table(
-            ec2_session=self.ec2_session,
-            reservation=self.reservation,
-            vpc_id=self.vpc_id,
+            self.vpc,
+            self.reservation,
         )
         # Assert
         self.assertEqual(result, table)
         self.route_table_service.create_route_table.assert_called_once_with(
-            self.ec2_session,
+            self.vpc,
             self.reservation,
-            self.vpc_id,
             "Private RoutingTable Reservation: 123",
         )
 
     def test_get_or_throw_private_route_table(self):
         # Arrange
-        self.route_table_service.get_route_table = Mock(return_value=None)
+        self.route_table_service.get_route_table.return_value = None
         # Act
-        with self.assertRaises(
-            Exception, msg="Routing table for non-public subnet was not found"
+        with self.assertRaisesRegex(
+            Exception, "Routing table for non-public subnet was not found"
         ):
             self.vpc_service.get_or_throw_private_route_table(
-                ec2_session=self.ec2_session,
-                reservation=self.reservation,
-                vpc_id=self.vpc_id,
+                self.vpc,
+                self.reservation,
             )
 
     def test_get_vpc_cidr(self):
@@ -377,8 +362,8 @@ class TestVPCService(TestCase):
         self.subnet_service.get_first_or_none_subnet_from_vpc = Mock(return_value=None)
         self.ec2_client.describe_availability_zones = Mock(return_value=None)
         # Act
-        with self.assertRaises(
-            Exception, msg="No AvailabilityZone is available for this vpc"
+        with self.assertRaisesRegex(
+            Exception, "No AvailabilityZone is available for this vpc"
         ):
             self.vpc_service.get_or_pick_availability_zone(
                 ec2_client=self.ec2_client,

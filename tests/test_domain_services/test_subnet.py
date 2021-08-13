@@ -1,3 +1,4 @@
+import re
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -70,7 +71,9 @@ class TestSubnetService(TestCase):
         vpc.id = "123"
         vpc.subnets.all = Mock(return_value=[])
         # act
-        with self.assertRaises(Exception, msg="The given VPC(123) has no subnets"):
+        with self.assertRaisesRegex(
+            ValueError, re.escape(f"The given VPC({vpc.id}) has no subnets")
+        ):
             self.subnet_srv.get_vpc_subnets(vpc)
         # assert
         vpc.subnets.all.assert_called_once()
