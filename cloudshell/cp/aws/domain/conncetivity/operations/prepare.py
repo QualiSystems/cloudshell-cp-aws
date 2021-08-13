@@ -759,23 +759,22 @@ class PrepareSandboxInfraOperation:
         action_result.errorMessage = f"PrepareSandboxInfra ended with the error: {e}"
         return action_result
 
-    def get_first_internet_gateway_id(self, vpc) -> Optional[str]:
+    def get_first_internet_gateway_id(self, vpc: "Vpc") -> Optional[str]:
         all_internet_gateways = self.vpc_service.get_all_internet_gateways(vpc)
         if len(all_internet_gateways) > 0:
             return all_internet_gateways[0].id
 
     @retry(stop_max_attempt_number=30, wait_fixed=1000)
-    def _create_and_attach_internet_gateway(self, ec2_session, vpc, reservation):
-        """# noqa
-        :param ec2_session:
-        :param vpc:
-        :param reservation: reservation model
-        :type reservation: cloudshell.cp.aws.models.reservation_model.ReservationModel
-        :return:
-        """
+    def _create_and_attach_internet_gateway(
+        self,
+        ec2_session: "EC2ServiceResource",
+        vpc: "Vpc",
+        reservation: "ReservationModel",
+    ) -> str:
         # check if internet gateway is not already attached
         igw_id = self.get_first_internet_gateway_id(vpc)
         if not igw_id:
-            return self.vpc_service.create_and_attach_internet_gateway(
+            igw_id = self.vpc_service.create_and_attach_internet_gateway(
                 ec2_session, vpc, reservation
             )
+        return igw_id
