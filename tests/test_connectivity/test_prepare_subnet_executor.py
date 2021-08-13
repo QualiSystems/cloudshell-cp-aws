@@ -1,8 +1,6 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-import pytest
-
 from cloudshell.cp.core.models import (
     PrepareCloudInfraParams,
     PrepareSubnet,
@@ -51,22 +49,21 @@ class TestPrepareSandboxInfra(TestCase):
         prepare_subnet.actionParams = PrepareCloudInfraParams()
         actions = [prepare_subnet]
         # Act
-        with self.assertRaises(Exception, msg="Not all actions are PrepareSubnet"):
+        with self.assertRaisesRegex(Exception, "Not all actions are PrepareSubnet"):
             self.executor.execute(actions)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_execute_with_no_vpc(self):
         # Arrange
         prepare_subnet = PrepareSubnet()
         prepare_subnet.actionId = "1"
         prepare_subnet.actionParams = PrepareSubnetParams()
         actions = [prepare_subnet]
-        self.vpc_service.find_vpc_for_reservation = Mock(return_value=None)
+        self.vpc_service.get_vpc.return_value = None
         self.vpc_service.get_active_vpcs_count = Mock(return_value=None)
 
         self.reservation.reservation_id = "123"
         # Act
-        with self.assertRaises(Exception, msg="VPC for reservation 123 not found."):
+        with self.assertRaisesRegex(Exception, "VPC for reservation 123 not found."):
             self.executor.execute(actions)
 
     def test_execute_gets_existing_subnet_and_no_wait(self):

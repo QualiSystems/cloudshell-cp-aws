@@ -1,7 +1,5 @@
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock
-
-import pytest
+from unittest.mock import Mock
 
 from cloudshell.cp.aws.domain.services.ec2.network_interface import (
     NetworkInterfaceService,
@@ -16,19 +14,22 @@ class TestNetworkInterfaceService(TestCase):
             subnet_service=self.subnet_service, security_group_service=self.sg_service
         )
 
-    @pytest.mark.skip(reason="skip for now")
     def test_build_network_interface_dto(self):
         # arrange
         subnet_id = Mock()
         device_index = Mock()
-        groups = MagicMock()
+        groups = [Mock()]
         public_ip = Mock()
+        vpc = Mock()
+        vpc_mode = Mock()
 
         # act
         dto = self.network_interface_service.build_network_interface_dto(
             subnet_id=subnet_id,
             device_index=device_index,
             groups=groups,
+            vpc=vpc,
+            vpc_mode=vpc_mode,
             public_ip=public_ip,
         )
 
@@ -38,16 +39,21 @@ class TestNetworkInterfaceService(TestCase):
         self.assertEquals(dto["Groups"], groups)
         self.assertEquals(dto["AssociatePublicIpAddress"], public_ip)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_build_network_interface_dto_no_public_ip(self):
         # arrange
         subnet_id = Mock()
         device_index = Mock()
-        groups = MagicMock()
+        groups = [Mock()]
+        vpc = Mock()
+        vpc_mode = Mock()
 
         # act
         dto = self.network_interface_service.build_network_interface_dto(
-            subnet_id=subnet_id, device_index=device_index, groups=groups
+            subnet_id=subnet_id,
+            device_index=device_index,
+            groups=groups,
+            vpc=vpc,
+            vpc_mode=vpc_mode,
         )
 
         # assert
@@ -56,14 +62,16 @@ class TestNetworkInterfaceService(TestCase):
         self.assertEquals(dto["Groups"], groups)
         self.assertTrue("AssociatePublicIpAddress" not in dto)
 
-    @pytest.mark.skip(reason="skip for now")
     def test_get_network_interface_for_single_subnet_mode(self):
         # arrange
         self.network_interface_service.build_network_interface_dto = Mock()
         add_public_ip = Mock()
         security_group_ids = Mock()
         vpc = Mock()
+        vpc_mode = Mock()
         subnet_id_mock = Mock()
+        ec2_session = Mock()
+        reservation = Mock()
         self.subnet_service.get_first_subnet_from_vpc = Mock(
             return_value=Mock(subnet_id=subnet_id_mock)
         )
@@ -73,6 +81,9 @@ class TestNetworkInterfaceService(TestCase):
             add_public_ip=add_public_ip,
             security_group_ids=security_group_ids,
             vpc=vpc,
+            ec2_session=ec2_session,
+            reservation=reservation,
+            vpc_mode=vpc_mode,
         )
 
         # assert
@@ -80,6 +91,8 @@ class TestNetworkInterfaceService(TestCase):
             subnet_id=subnet_id_mock,
             device_index=0,
             groups=security_group_ids,
+            vpc=vpc,
+            vpc_mode=vpc_mode,
             public_ip=add_public_ip,
             private_ip=None,
         )
