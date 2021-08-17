@@ -8,6 +8,7 @@ class TestInstanceService(TestCase):
     def setUp(self):
         self.tag_service = Mock()
         self.instance_waiter = Mock()
+        self.network_interface_service = Mock()
         self.ec2_session = Mock()
         self.ec2_client = Mock()
         self.name = "name"
@@ -19,7 +20,9 @@ class TestInstanceService(TestCase):
         self.tag_service.get_custom_tags = Mock(return_value=[])
         self.ec2_session.create_instances = Mock(return_value=[self.instance])
         self.ec2_session.Instance = Mock(return_value=self.instance)
-        self.instance_service = InstanceService(self.tag_service, self.instance_waiter)
+        self.instance_service = InstanceService(
+            self.tag_service, self.instance_waiter, self.network_interface_service
+        )
 
     def test_create_instance(self):
         ami_dep = Mock()
@@ -100,11 +103,12 @@ class TestInstanceService(TestCase):
 
         # act
         self.instance_service.wait_for_instance_to_run_in_aws(
-            ec2_client=ec2_client,
-            instance=instance,
-            wait_for_status_check=True,
-            cancellation_context=cancellation_context,
-            logger=logger,
+            ec2_client,
+            instance,
+            True,
+            0,
+            cancellation_context,
+            logger,
         )
 
         # assert
@@ -114,8 +118,9 @@ class TestInstanceService(TestCase):
             cancellation_context=cancellation_context,
         )
         self.instance_service.instance_waiter.wait_status_ok.assert_called_once_with(
-            ec2_client=ec2_client,
-            instance=instance,
-            logger=logger,
-            cancellation_context=cancellation_context,
+            ec2_client,
+            instance,
+            logger,
+            0,
+            cancellation_context,
         )

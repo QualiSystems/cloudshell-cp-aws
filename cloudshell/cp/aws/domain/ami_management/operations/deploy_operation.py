@@ -168,17 +168,20 @@ class DeployAMIOperation:
             )
             logger.info("Instance created, populating results with interface data")
             self.instance_service.wait_for_instance_to_run_in_aws(
-                ec2_client=ec2_client,
-                instance=instance,
-                wait_for_status_check=ami_deployment_model.wait_for_status_check,
-                cancellation_context=cancellation_context,
-                logger=logger,
+                ec2_client,
+                instance,
+                ami_deployment_model.wait_for_status_check,
+                ami_deployment_model.status_check_timeout,
+                cancellation_context,
+                logger,
             )
             self.instance_service.set_tags(
                 instance, name, reservation, ami_deployment_info.custom_tags
             )
             # Reload the instance attributes
             retry_helper.do_with_retry(lambda: instance.load())
+            if not ami_deployment_model.enable_source_dest_check:
+                self.instance_service.disable_source_dest_check(ec2_client, instance)
 
             self._populate_network_config_results_with_interface_data(
                 instance=instance, network_config_results=network_config_results
@@ -533,6 +536,8 @@ class DeployAMIOperation:
         aws_model.custom_tags = self._get_custom_tags(
             custom_tags=ami_deployment_model.custom_tags
         )
+        aws_model.source_dest_check = ami_deployment_model.enable_source_dest_check
+        aws_model.status_check_timeout = ami_deployment_model.status_check_timeout
         aws_model.user_data = self._get_user_data(
             user_data_url=ami_deployment_model.user_data_url,
             user_data_run_parameters=ami_deployment_model.user_data_run_parameters,

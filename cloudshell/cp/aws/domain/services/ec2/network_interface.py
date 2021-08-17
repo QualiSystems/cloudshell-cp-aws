@@ -1,9 +1,12 @@
 from typing import TYPE_CHECKING, List, Optional
 
+import retrying
+
+from cloudshell.cp.aws.common.retry_helper import retry_if_client_error
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2 import EC2ServiceResource
+    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
     from mypy_boto3_ec2.service_resource import SecurityGroup, Vpc
 
     from cloudshell.cp.aws.domain.services.ec2.security_group import (
@@ -88,3 +91,14 @@ class NetworkInterfaceService:
             net_if["PrivateIpAddress"] = private_ip
 
         return net_if
+
+    @retrying.retry(
+        retry_on_exception=retry_if_client_error,
+        stop_max_attempt_number=30,
+        wait_fixed=1000,
+    )
+    def disable_source_dest_check(self, ec2_client: "EC2Client", nic_id: str):
+        ec2_client.modify_network_interface_attribute(
+            NetworkInterfaceId=nic_id,
+            SourceDestCheck={"Value": False},
+        )
