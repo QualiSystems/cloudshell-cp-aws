@@ -118,9 +118,6 @@ class AWSShell:
         self.ec2_instance_waiter = InstanceWaiter(
             cancellation_service=self.cancellation_service
         )
-        self.instance_service = InstanceService(
-            self.tag_service, self.ec2_instance_waiter
-        )
         self.ec2_storage_service = EC2StorageService()
         self.model_parser = AWSModelsParser()
         self.cloudshell_session_helper = CloudshellDriverHelper()
@@ -139,6 +136,9 @@ class AWSShell:
         self.network_interface_service = NetworkInterfaceService(
             subnet_service=self.subnet_service,
             security_group_service=self.security_group_service,
+        )
+        self.instance_service = InstanceService(
+            self.tag_service, self.ec2_instance_waiter, self.network_interface_service
         )
         self.elastic_ip_service = ElasticIpService()
         self.vm_details_provider = VmDetailsProvider()

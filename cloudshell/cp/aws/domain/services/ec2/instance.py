@@ -1,22 +1,31 @@
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2 import EC2ServiceResource
+    from logging import Logger
+
+    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
     from mypy_boto3_ec2.service_resource import Instance, Vpc
 
+    from cloudshell.shell.core.driver_context import CancellationContext
+
+    from cloudshell.cp.aws.domain.services.ec2.network_interface import (
+        NetworkInterfaceService,
+    )
     from cloudshell.cp.aws.domain.services.ec2.tags import TagService
+    from cloudshell.cp.aws.domain.services.waiters.instance import InstanceWaiter
     from cloudshell.cp.aws.models.ami_deployment_model import AMIDeploymentModel
 
 
 class InstanceService:
-    def __init__(self, tags_creator_service: "TagService", instance_waiter):
-        """# noqa
-        :param tags_creator_service: Tags Service
-        :param instance_waiter: Instance Waiter
-        :type instance_waiter: cloudshell.cp.aws.domain.services.waiters.instance.InstanceWaiter
-        """
+    def __init__(
+        self,
+        tags_creator_service: "TagService",
+        instance_waiter: "InstanceWaiter",
+        network_interface_service: "NetworkInterfaceService",
+    ):
         self.instance_waiter = instance_waiter
         self.tags_creator_service = tags_creator_service
+        self.network_interface_service = network_interface_service
 
     def create_instance(
         self,
@@ -36,18 +45,21 @@ class InstanceService:
         )[0]
         return instance
 
-    def wait_for_instance_to_run_in_aws(
-        self, ec2_client, instance, wait_for_status_check, cancellation_context, logger
-    ):
-        """# noqa
+    def disable_source_dest_check(self, ec2_client: "EC2Client", instance: "Instance"):
+        for nic in instance.network_interfaces_attribute:
+            self.network_interface_service.disable_source_dest_check(
+                ec2_client, nic["NetworkInterfaceId"]
+            )
 
-        :param ec2_client:
-        :param instance:
-        :param bool wait_for_status_check:
-        :param CancellationContext cancellation_context:
-        :param logging.Logger logger:
-        :return:
-        """
+    def wait_for_instance_to_run_in_aws(
+        self,
+        ec2_client: "EC2Client",
+        instance: "Instance",
+        wait_for_status_check: bool,
+        status_check_timeout: int,
+        cancellation_context: "CancellationContext",
+        logger: "Logger",
+    ):
         self.instance_waiter.wait(
             instance=instance,
             state=self.instance_waiter.RUNNING,
@@ -56,10 +68,11 @@ class InstanceService:
 
         if wait_for_status_check:
             self.instance_waiter.wait_status_ok(
-                ec2_client=ec2_client,
-                instance=instance,
-                logger=logger,
-                cancellation_context=cancellation_context,
+                ec2_client,
+                instance,
+                logger,
+                status_check_timeout,
+                cancellation_context,
             )
             logger.info("Instance created with status: instance_status_ok.")
 

@@ -153,6 +153,16 @@ class TestModelParser(TestCase):
                 "attributeValue": "",
                 "type": "attribute",
             },
+            {
+                "attributeName": f"{d_path}.Enable Source Dest Check",
+                "attributeValue": "False",
+                "type": "attribute",
+            },
+            {
+                "attributeName": f"{d_path}.Status Check Timeout",
+                "attributeValue": "100",
+                "type": "attribute",
+            },
         ]
         json_str = json.dumps(
             {
@@ -228,6 +238,12 @@ class TestModelParser(TestCase):
         self.assertFalse(model.actionParams.deployment.customModel.wait_for_credentials)
         self.assertFalse(model.actionParams.deployment.customModel.add_public_ip)
         self.assertTrue(model.actionParams.deployment.customModel.allocate_elastic_ip)
+        self.assertFalse(
+            model.actionParams.deployment.customModel.enable_source_dest_check
+        )
+        self.assertEquals(
+            model.actionParams.deployment.customModel.status_check_timeout, 100
+        )
 
     def test_convert_to_deployment_resource_model_with_network(self):
         json = (

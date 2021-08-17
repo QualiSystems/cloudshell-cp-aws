@@ -1,7 +1,16 @@
 import time
 from multiprocessing import TimeoutError
+from typing import TYPE_CHECKING
 
 from retrying import retry
+
+if TYPE_CHECKING:
+    from logging import Logger
+
+    from mypy_boto3_ec2 import EC2Client
+    from mypy_boto3_ec2.service_resource import Instance
+
+    from cloudshell.shell.core.driver_context import CancellationContext
 
 
 class InstanceWaiter:
@@ -74,27 +83,33 @@ class InstanceWaiter:
 
         return instances
 
-    def wait_status_ok(self, ec2_client, instance, logger, cancellation_context=None):
-        """# noqa
-
-        :param logging.Logger logger:
-        :param instance: Instance
-        :param ec2_client: EC2 client
-        :param CancellationContext cancellation_context:
-        :return:
-        """
+    def wait_status_ok(
+        self,
+        ec2_client: "EC2Client",
+        instance: "Instance",
+        logger: "Logger",
+        status_check_timeout: int,
+        cancellation_context: "CancellationContext",
+    ):
         if not instance:
             raise ValueError("Instance cannot be null")
 
+        timeout = status_check_timeout or self.timeout
         start_time = time.time()
-
         instance_status = self._get_instance_status(ec2_client, instance)
         while not self._is_instance_status_ok(instance_status):
-            if time.time() - start_time >= self.timeout:
+            if time.time() - start_time >= timeout:
                 raise TimeoutError(
                     "Timeout: Waiting for instance status check to be OK"
                 )
-            if self._is_instance_status_impaired(instance_status):
+            # if status check timeout is provided we want to wait until status check is
+            # OK or timeout is reached. We don't want to stop the waiter if the instance
+            # is impaired. That's because some virtual appliances might take 40+ minutes
+            # to be OK and AWS will show them as impaired after about 20 minutes until
+            # it begins to work
+            if not status_check_timeout and self._is_instance_status_impaired(
+                instance_status
+            ):
                 logger.error(f"Instance status check is not OK: {instance_status}")
                 raise ValueError(
                     "Instance status check is not OK. Check the log and aws console "
