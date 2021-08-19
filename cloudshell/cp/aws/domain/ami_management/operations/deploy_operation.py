@@ -178,8 +178,10 @@ class DeployAMIOperation:
             self.instance_service.set_tags(
                 instance, name, reservation, ami_deployment_info.custom_tags
             )
+
             # Reload the instance attributes
             retry_helper.do_with_retry(lambda: instance.load())
+
             if not ami_deployment_model.enable_source_dest_check:
                 self.instance_service.disable_source_dest_check(ec2_client, instance)
 
