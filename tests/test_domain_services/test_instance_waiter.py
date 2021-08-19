@@ -137,7 +137,7 @@ class TestInstanceWaiter(TestCase):
 
         # act
         instance_state = self.instance_waiter.wait_status_ok(
-            ec2_client=ec2_client, instance=instance, logger=self.logger
+            ec2_client, instance, self.logger, 0, self.cancellation_service
         )
 
         # assert
@@ -191,5 +191,5 @@ class TestInstanceWaiter(TestCase):
         # act & assert
         with self.assertRaisesRegexp(ValueError, "Instance status check is not OK.*"):
             self.instance_waiter.wait_status_ok(
-                ec2_client=ec2_client, instance=instance, logger=self.logger
+                ec2_client, instance, self.logger, 0, self.cancellation_service
             )
