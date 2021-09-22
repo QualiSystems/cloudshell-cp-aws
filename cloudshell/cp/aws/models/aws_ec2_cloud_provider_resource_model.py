@@ -25,15 +25,15 @@ class VpcMode(Enum):
 @dataclass
 class AWSEc2CloudProviderResourceModel:
     region: str
-    aws_management_sg_id: str
-    aws_management_vpc_id: str
+    aws_mgmt_sg_id: str
+    aws_mgmt_vpc_id: str
     key_pairs_location: str
     max_storage_size: int
     max_storage_iops: int
     instance_type: str
     vpc_mode: VpcMode
-    vpc_cidr: str
-    vpc_id: str
+    static_vpc_cidr: str
+    shared_vpc_id: str
     shared_vpc_role_arn: str
     aws_secret_access_key: str
     aws_access_key_id: str
@@ -43,12 +43,12 @@ class AWSEc2CloudProviderResourceModel:
     vgw_cidrs: List[str]
 
     def _validate_vpc_id(self):
-        if self.vpc_mode is VpcMode.SHARED and not self.vpc_id:
+        if self.vpc_mode is VpcMode.SHARED and not self.shared_vpc_id:
             msg = "You should specify 'VPC ID' for the Shared VPC Mode"
             raise ValueError(msg)
 
     def _validate_aws_mgt_vpc_id(self):
-        if not self.aws_management_vpc_id:
+        if not self.aws_mgmt_vpc_id:
             raise ValueError("AWS Mgmt VPC ID attribute must be set")
 
     def _validate_additional_mgt_networks(self):
@@ -90,15 +90,15 @@ class AWSEc2CloudProviderResourceModel:
 
         model = cls(
             region=_get("Region"),
-            aws_management_sg_id=_get("AWS Mgmt SG ID"),
-            aws_management_vpc_id=_get("AWS Mgmt VPC ID"),
+            aws_mgmt_sg_id=_get("AWS Mgmt SG ID"),
+            aws_mgmt_vpc_id=_get("AWS Mgmt VPC ID"),
             key_pairs_location=_get("Keypairs Location"),
             max_storage_size=int(_get("Max Storage Size")),
             max_storage_iops=int(_get("Max Storage IOPS")),
             instance_type=_get("Instance Type"),
             vpc_mode=VpcMode(_get("VPC Mode")),
-            vpc_cidr=_get("Static VPC CIDR"),
-            vpc_id=_get("Shared VPC ID"),
+            static_vpc_cidr=_get("Static VPC CIDR"),
+            shared_vpc_id=_get("Shared VPC ID"),
             aws_secret_access_key=_get("AWS Secret Access Key"),
             aws_access_key_id=_get("AWS Access Key ID"),
             additional_mgt_networks=get_items(_get("Additional Management Networks")),

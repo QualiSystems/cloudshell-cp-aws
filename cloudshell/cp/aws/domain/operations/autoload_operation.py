@@ -26,7 +26,7 @@ class AutoloadOperation:
         # removed for now
         # self._validate_keypair_location_in_s3(cloud_provider_model, logger, s3_session) # noqa
 
-        self._validate_vpc_cidr(vpc_cidr=cloud_provider_model.vpc_cidr, logger=logger)
+        self._validate_vpc_cidr(cloud_provider_model.static_vpc_cidr, logger)
 
         return AutoLoadDetails([], [])
 
@@ -34,7 +34,7 @@ class AutoloadOperation:
         self, cloud_provider_model, ec2_client, logger
     ):
         logger.info("Validate management security group")
-        management_sg_id = cloud_provider_model.aws_management_sg_id
+        management_sg_id = cloud_provider_model.aws_mgmt_sg_id
         if management_sg_id == "":
             return
         try:
