@@ -185,7 +185,7 @@ class VPCService:
         aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
     ) -> Optional["Vpc"]:
         if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
-            return self.get_vpc_by_id(ec2_session, aws_ec2_datamodel.vpc_id)
+            return self.get_vpc_by_id(ec2_session, aws_ec2_datamodel.shared_vpc_id)
         else:
             return self.find_vpc_for_reservation(ec2_session, reservation_id)
 

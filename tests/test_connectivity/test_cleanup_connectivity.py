@@ -59,7 +59,7 @@ class TestCleanupSandboxInfra(TestCase):
         self.assertTrue(self.vpc_serv.delete_vpc.called_with(vpc))
         self.route_table_service.get_all_route_tables.assert_called_once_with(
             self.ec2_session,
-            self.aws_ec2_data_model.aws_management_vpc_id,
+            self.aws_ec2_data_model.aws_mgmt_vpc_id,
         )
         self.assertEquals(
             self.route_table_service.delete_blackhole_routes.call_count, 2

@@ -230,7 +230,7 @@ class PrepareSandboxInfraOperation:
         vpc = self._get_or_create_vpc(cidr, ec2_session, reservation, aws_ec2_datamodel)
         if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
             cidr = vpc.cidr_block
-            aws_ec2_datamodel.vpc_cidr = cidr
+            aws_ec2_datamodel.static_vpc_cidr = cidr
 
         # will enable dns for the vpc
         self.cancellation_service.check_if_cancelled(cancellation_context)
@@ -276,7 +276,7 @@ class PrepareSandboxInfraOperation:
             ec2_session=ec2_session,
             reservation=reservation,
             vpc=vpc,
-            management_sg_id=aws_ec2_datamodel.aws_management_sg_id,
+            management_sg_id=aws_ec2_datamodel.aws_mgmt_sg_id,
             need_management_access=(aws_ec2_datamodel.vpc_mode is VpcMode.DYNAMIC),
         )
         if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
@@ -288,8 +288,11 @@ class PrepareSandboxInfraOperation:
 
     @staticmethod
     def _get_vpc_cidr(action, aws_ec2_datamodel, logger):
-        if aws_ec2_datamodel.vpc_mode is VpcMode.STATIC and aws_ec2_datamodel.vpc_cidr:
-            cidr = aws_ec2_datamodel.vpc_cidr
+        if (
+            aws_ec2_datamodel.vpc_mode is VpcMode.STATIC
+            and aws_ec2_datamodel.static_vpc_cidr
+        ):
+            cidr = aws_ec2_datamodel.static_vpc_cidr
             logger.info(
                 f"Decided to use VPC CIDR {cidr} as defined on cloud provider for "
                 "sandbox VPC"
@@ -325,7 +328,7 @@ class PrepareSandboxInfraOperation:
             self._peer_vpcs(
                 ec2_client=ec2_client,
                 ec2_session=ec2_session,
-                management_vpc_id=aws_ec2_datamodel.aws_management_vpc_id,
+                management_vpc_id=aws_ec2_datamodel.aws_mgmt_vpc_id,
                 vpc_id=vpc.id,
                 sandbox_vpc_cidr=cidr,
                 reservation_model=reservation,
@@ -507,7 +510,7 @@ class PrepareSandboxInfraOperation:
         aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
     ) -> str:
         vpc = self.vpc_service.get_vpc_by_id(
-            default_ec2_session, aws_ec2_datamodel.aws_management_vpc_id
+            default_ec2_session, aws_ec2_datamodel.aws_mgmt_vpc_id
         )
         return vpc.cidr_block
 
