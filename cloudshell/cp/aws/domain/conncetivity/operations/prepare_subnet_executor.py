@@ -157,10 +157,10 @@ class PrepareSubnetExecutor:
         alias = getattr(item.action.actionParams, "alias", "Default Subnet")
         if (
             self.aws_ec2_datamodel.vpc_mode is VpcMode.STATIC
-            and self.aws_ec2_datamodel.vpc_cidr
+            and self.aws_ec2_datamodel.static_vpc_cidr
             and not is_multi_subnet_mode
         ):
-            cidr = self.aws_ec2_datamodel.vpc_cidr
+            cidr = self.aws_ec2_datamodel.static_vpc_cidr
             self.logger.info(
                 f"Decided to use subnet CIDR {cidr} as defined on cloud provider "
                 f"for subnet {alias}"
@@ -316,10 +316,10 @@ class SubnetActionHelper:
 
         if (
             aws_cp_model.vpc_mode is VpcMode.STATIC
-            and aws_cp_model.vpc_cidr != ""
+            and aws_cp_model.static_vpc_cidr != ""
             and not is_multi_subnet_mode
         ):
-            self._cidr = aws_cp_model.vpc_cidr
+            self._cidr = aws_cp_model.static_vpc_cidr
             logger.info(
                 f"Decided to use subnet CIDR {self._cidr} as defined on cloud provider "
                 f"for subnet {alias}"

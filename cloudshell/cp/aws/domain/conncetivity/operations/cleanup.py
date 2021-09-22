@@ -198,7 +198,7 @@ class CleanupSandboxInfraDynamicStaticVpcStrategy(CleanupSandboxInfraBaseStrateg
 
     def _remove_blackhole_routes_mgt_vpc(self):
         rts = self.route_table_service.get_all_route_tables(
-            self.ec2_session, self.aws_ec2_datamodel.aws_management_vpc_id
+            self.ec2_session, self.aws_ec2_datamodel.aws_mgmt_vpc_id
         )
         for rt in rts:
             self.route_table_service.delete_blackhole_routes(rt, self.ec2_client)
@@ -213,7 +213,7 @@ class CleanupSandboxInfraDynamicStaticVpcStrategy(CleanupSandboxInfraBaseStrateg
 class CleanupSandboxInfraSharedVpcStrategy(CleanupSandboxInfraBaseStrategy):
     def get_vpc(self) -> "Vpc":
         return self.vpc_service.get_vpc_by_id(
-            self.ec2_session, self.aws_ec2_datamodel.vpc_id
+            self.ec2_session, self.aws_ec2_datamodel.shared_vpc_id
         )
 
     def _remove_instances(self, vpc: "Vpc"):

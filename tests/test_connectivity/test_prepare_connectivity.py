@@ -191,7 +191,7 @@ class TestPrepareSandboxInfra(TestCase):
     def test_prepare_conn_command_no_management_vpc(self):
         aws_dm = Mock()
         cancellation_context = Mock()
-        aws_dm.aws_management_vpc_id = None
+        aws_dm.aws_mgmt_vpc_id = None
         with self.assertRaises(ValueError):
             self.prepare_conn.prepare_connectivity(
                 self.ec2_client,
