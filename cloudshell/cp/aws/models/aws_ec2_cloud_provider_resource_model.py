@@ -19,6 +19,7 @@ class VpcMode(Enum):
     DYNAMIC = "Dynamic"
     STATIC = "Static"
     SHARED = "Shared"
+    SINGLE = "Single"
 
 
 @dataclass
