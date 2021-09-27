@@ -1,4 +1,4 @@
-# cloudShell-cp-aws
+# cloudshell-cp-aws
 
 [![Build status](https://github.com/QualiSystems/cloudshell-cp-aws/workflows/CI/badge.svg?branch=master)](https://github.com/QualiSystems/cloudshell-cp-aws/actions?query=branch%3Amaster)
 [![codecov](https://codecov.io/gh/QualiSystems/cloudshell-cp-aws/branch/dev/graph/badge.svg)](https://codecov.io/gh/QualiSystems/cloudshell-cp-aws)
