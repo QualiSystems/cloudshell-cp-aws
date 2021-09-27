@@ -13,33 +13,31 @@ class TestCleanupSandboxInfra(TestCase):
     def setUp(self):
         self.vpc_serv = Mock()
         self.key_pair_serv = Mock()
-        self.s3_session = Mock()
         self.ec2_session = Mock()
-        self.aws_ec2_data_model = Mock(vpc_mode=VpcMode.DYNAMIC)
+        self.s3_session = Mock()
+        self.ec2_client = Mock()
+        self.aws_api_clients = Mock(
+            ec2_session=self.ec2_session,
+            s3_session=self.s3_session,
+            ec2_client=self.ec2_client,
+        )
+        self.aws_model = Mock(vpc_mode=VpcMode.DYNAMIC)
         self.reservation_id = Mock()
-        self.route_table_service = Mock()
-        self.traffic_mirror_service = Mock()
         self.cleanup_operation = CleanupSandboxInfraOperation(
             self.vpc_serv,
             self.key_pair_serv,
-            self.route_table_service,
-            self.traffic_mirror_service,
         )
+        self.logger = Mock()
 
     def test_cleanup(self):
-        self.route_table_service.get_all_route_tables = Mock(
-            return_value=[Mock(), Mock()]
-        )
         vpc = self.vpc_serv.find_vpc_for_reservation()
 
         self.cleanup_operation.cleanup(
-            ec2_session=self.ec2_session,
-            s3_session=self.s3_session,
-            aws_ec2_data_model=self.aws_ec2_data_model,
+            self.aws_api_clients,
+            aws_model=self.aws_model,
             reservation_id=self.reservation_id,
-            logger=Mock(),
+            logger=self.logger,
             actions=[PrepareCloudInfra()],
-            ec2_client=Mock(),
         )
 
         self.assertTrue(
@@ -49,7 +47,7 @@ class TestCleanupSandboxInfra(TestCase):
         )
         self.assertTrue(
             self.key_pair_serv.remove_key_pair_for_reservation_in_s3.called_with(
-                self.s3_session, self.aws_ec2_data_model, self.reservation_id
+                self.s3_session, self.aws_model, self.reservation_id
             )
         )
         self.assertTrue(self.vpc_serv.delete_all_instances.called_with(vpc))
@@ -57,30 +55,20 @@ class TestCleanupSandboxInfra(TestCase):
         self.assertTrue(self.vpc_serv.remove_all_subnets.called_with(vpc))
         self.assertTrue(self.vpc_serv.remove_all_peering.called_with(vpc))
         self.assertTrue(self.vpc_serv.delete_vpc.called_with(vpc))
-        self.route_table_service.get_all_route_tables.assert_called_once_with(
-            self.ec2_session,
-            self.aws_ec2_data_model.aws_mgmt_vpc_id,
+        self.vpc_serv.delete_traffic_mirror_elements.assert_called_once_with(
+            self.ec2_client, self.reservation_id, self.logger
         )
-        self.assertEquals(
-            self.route_table_service.delete_blackhole_routes.call_count, 2
-        )
+        self.vpc_serv.delete_all_blackhole_routes.called_once_with(vpc)
 
     def test_cleanup_no_vpc(self):
         vpc_serv = Mock()
         vpc_serv.find_vpc_for_reservation = Mock(return_value=None)
-        result = CleanupSandboxInfraOperation(
-            vpc_serv,
-            self.key_pair_serv,
-            self.route_table_service,
-            self.traffic_mirror_service,
-        ).cleanup(
-            ec2_session=self.ec2_session,
-            s3_session=self.s3_session,
-            aws_ec2_data_model=self.aws_ec2_data_model,
+        result = CleanupSandboxInfraOperation(vpc_serv, self.key_pair_serv,).cleanup(
+            aws_clients=self.aws_api_clients,
+            aws_model=self.aws_model,
             reservation_id=self.reservation_id,
-            ec2_client=Mock(),
             actions=[PrepareCloudInfra()],
-            logger=Mock(),
+            logger=self.logger,
         )
 
         self.assertFalse(result.success)
