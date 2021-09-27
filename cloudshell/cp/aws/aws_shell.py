@@ -202,8 +202,6 @@ class AWSShell:
         self.clean_up_operation = CleanupSandboxInfraOperation(
             vpc_service=self.vpc_service,
             key_pair_service=self.key_pair_service,
-            route_table_service=self.route_tables_service,
-            traffic_mirror_service=self.traffic_mirror_service,
         )
 
         self.deployed_app_ports_operation = DeployedAppPortsOperation(

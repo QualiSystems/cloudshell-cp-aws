@@ -7,6 +7,8 @@ from cloudshell.cp.aws.common import retry_helper
 from cloudshell.cp.aws.domain.conncetivity.operations.traffic_mirror_cleaner import (
     TrafficMirrorCleaner,
 )
+from cloudshell.cp.aws.domain.handlers.ec2 import RouteTableHandler, RouteTableNotFound
+from cloudshell.cp.aws.domain.handlers.ec2.tags_handler import TagsHandler
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 if TYPE_CHECKING:
@@ -19,6 +21,15 @@ if TYPE_CHECKING:
         AWSEc2CloudProviderResourceModel,
     )
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
+
+
+class VpcError(Exception):
+    ...
+
+
+class FailedToDeleteRouteTables(VpcError):
+    def __init__(self, errors: List[Exception]):
+        super().__init__(f"Failed to remove route tables. Errors: {errors}")
 
 
 class VPCService:
@@ -318,21 +329,33 @@ class VPCService:
         for sg in self.sg_service.sort_sg_list(security_groups):
             self.sg_service.delete_security_group(sg)
 
-    def remove_all_subnets(self, vpc):
-        """Will remove all attached subnets to that vpc.
+    def remove_security_groups_for_reservation(self, vpc: "Vpc", reservation_id: str):
+        sg_list = self.sg_service.get_security_groups_by_reservation_id(
+            vpc, reservation_id
+        )
+        for sg in self.sg_service.sort_sg_list(sg_list):
+            self.sg_service.delete_security_group(sg)
 
-        :param vpc: EC2 VPC instance
-        :return:
-        """
+    def remove_all_subnets(self, vpc: "Vpc"):
+        """Will remove all attached subnets to that vpc."""
         subnets = list(vpc.subnets.all())
         for subnet in subnets:
             self.subnet_service.delete_subnet(subnet)
         return True
 
-    def delete_all_instances(self, vpc):
+    def remove_subnets_for_reservation(self, vpc: "Vpc", reservation_id: str):
+        for subnet in self.find_subnets_by_reservation_id(vpc, reservation_id):
+            self.subnet_service.delete_subnet(subnet)
+
+    def delete_all_instances(self, vpc: "Vpc"):
         instances = list(vpc.instances.all())
         self.instance_service.terminate_instances(instances)
-        return True
+
+    def delete_instances_for_reservation(self, vpc: "Vpc", reservation_id: str):
+        instances = self.instance_service.get_instances_for_reservation(
+            vpc, reservation_id
+        )
+        self.instance_service.terminate_instances(instances)
 
     def delete_vpc(self, vpc):
         """Will delete the vpc instance.
@@ -398,6 +421,20 @@ class VPCService:
             self.route_table_service.delete_table(table)
         return True
 
+    @staticmethod
+    def remove_route_tables_for_reservation(vpc: "Vpc", reservation_id: str):
+        errors = []
+        for fn in RouteTableHandler.get_private, RouteTableHandler.get_public:
+            try:
+                rt = fn(vpc, reservation_id)  # pycharm failed to get correct params
+                rt.delete()
+            except RouteTableNotFound:
+                pass
+            except Exception as e:
+                errors.append(e)
+        if errors:
+            raise FailedToDeleteRouteTables(errors)
+
     def set_main_route_table_tags(self, main_route_table, reservation):
         table_name = self.MAIN_ROUTE_TABLE_RESERVATION.format(
             reservation.reservation_id
@@ -423,28 +460,16 @@ class VPCService:
 
         return result
 
-    def delete_traffic_mirror_elements(
-        self, ec2_client, traffic_mirror_service, reservation_id, logger
-    ):
-        """Delete.
-
-        :param logging.Logger logger:
-        :param cloudshell.cp.aws.domain.services.ec2.mirroring.TrafficMirrorService traffic_mirror_service:  # noqa: E501
-        :param uuid.uuid4 reservation_id:
-        :return:
-        """
-        session_ids = traffic_mirror_service.find_mirror_session_ids_by_reservation_id(
+    def delete_traffic_mirror_elements(self, ec2_client, reservation_id, logger):
+        tm_service = self.traffic_mirror_service
+        session_ids = tm_service.find_mirror_session_ids_by_reservation_id(
             ec2_client, reservation_id
         )
-        filter_ids = (
-            traffic_mirror_service.find_traffic_mirror_filter_ids_by_reservation_id(
-                ec2_client, reservation_id
-            )
+        filter_ids = tm_service.find_traffic_mirror_filter_ids_by_reservation_id(
+            ec2_client, reservation_id
         )
-        target_ids = (
-            traffic_mirror_service.find_traffic_mirror_targets_by_reservation_id(
-                ec2_client, reservation_id
-            )
+        target_ids = tm_service.find_traffic_mirror_targets_by_reservation_id(
+            ec2_client, reservation_id
         )
         try:
             TrafficMirrorCleaner.cleanup(
@@ -464,3 +489,15 @@ class VPCService:
                 Filters=[{"Name": "tag:ReservationId", "Values": [reservation_id]}]
             )
         )
+
+    @staticmethod
+    def get_name(vpc: "Vpc"):
+        name = TagsHandler.from_tags_list(vpc.tags).get_name()
+        if not name:
+            name = vpc.vpc_id
+        return name
+
+    @staticmethod
+    def delete_all_blackhole_routes(vpc: "Vpc"):
+        for route_handler in RouteTableHandler.get_all(vpc):
+            route_handler.delete_blackhole_routes()
