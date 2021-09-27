@@ -214,9 +214,8 @@ class TestVPCService(TestCase):
         self.vpc.instances = Mock()
         self.vpc.instances.all = Mock(return_value=[instance])
 
-        res = self.vpc_service.delete_all_instances(self.vpc)
+        self.vpc_service.delete_all_instances(self.vpc)
 
-        self.assertIsNotNone(res)
         self.instance_service.terminate_instances.assert_called_once_with([instance])
 
     def test_delete_vpc(self):
