@@ -239,26 +239,18 @@ class AWSShell:
         )
 
     def cleanup_connectivity(self, command_context, actions):
-        """# noqa
-        Will delete the reservation vpc and all related resources including all remaining instances
-        :param ResourceCommandContext command_context:
-        :param list[RequestActionBase] actions::
-        :return: json string response
-        :rtype: str
-        """
+        """Will delete the reservation vpc and all related resources."""
         with AwsShellContext(
             context=command_context, aws_session_manager=self.aws_session_manager
         ) as shell_context:
             shell_context.logger.info("Cleanup Connectivity")
 
             result = self.clean_up_operation.cleanup(
-                ec2_client=shell_context.aws_api.ec2_client,
-                ec2_session=shell_context.aws_api.ec2_session,
-                s3_session=shell_context.aws_api.s3_session,
-                aws_ec2_data_model=shell_context.aws_ec2_resource_model,
-                reservation_id=command_context.reservation.reservation_id,
-                actions=actions,
-                logger=shell_context.logger,
+                shell_context.aws_api,
+                shell_context.aws_ec2_resource_model,
+                command_context.reservation.reservation_id,
+                actions,
+                shell_context.logger,
             )
             return self.command_result_parser.set_command_result(
                 {"driverResponse": {"actionResults": [result]}}
