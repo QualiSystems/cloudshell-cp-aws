@@ -103,13 +103,11 @@ class TestAWSShell(TestCase):
 
         # assert
         self.aws_shell.clean_up_operation.cleanup.assert_called_with(
-            ec2_client=self.expected_shell_context.aws_api.ec2_client,
-            ec2_session=self.expected_shell_context.aws_api.ec2_session,
-            s3_session=self.expected_shell_context.aws_api.s3_session,
-            aws_ec2_data_model=self.expected_shell_context.aws_ec2_resource_model,
-            reservation_id=self.command_context.reservation.reservation_id,
-            actions=actions_mock,
-            logger=self.expected_shell_context.logger,
+            self.expected_shell_context.aws_api,
+            self.expected_shell_context.aws_ec2_resource_model,
+            self.command_context.reservation.reservation_id,
+            actions_mock,
+            self.expected_shell_context.logger,
         )
         self.assertEquals(result, '{"driverResponse": {"actionResults": [true]}}')
 
