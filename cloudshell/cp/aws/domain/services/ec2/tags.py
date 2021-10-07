@@ -112,9 +112,6 @@ class TagService:
     def get_reservation_tag(self, reservation_id):
         return self._get_kvp(TagNames.ReservationId, reservation_id)
 
-    def get_is_public_tag(self, value):
-        return self._get_kvp(TagNames.IsPublic, str(value))
-
     @retry(stop_max_attempt_number=30, wait_fixed=1000)
     def set_ec2_resource_tags(self, resource, tags):
         """Will set tags on a EC2 resource.

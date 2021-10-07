@@ -43,17 +43,17 @@ class AwsAwsShellContext(TestCase):
                                 aws_shell_context, AwsShellContextModel
                             )
 
-                            self.assertEquals(
+                            self.assertEqual(
                                 aws_shell_context.logger, expected_context.logger
                             )
-                            self.assertEquals(
+                            self.assertEqual(
                                 aws_shell_context.cloudshell_session,
                                 expected_context.cloudshell_session,
                             )
-                            self.assertEquals(
+                            self.assertEqual(
                                 aws_shell_context.aws_ec2_resource_model,
                                 expected_context.aws_ec2_resource_model,
                             )
-                            self.assertEquals(
+                            self.assertEqual(
                                 aws_shell_context.aws_api, expected_context.aws_api
                             )

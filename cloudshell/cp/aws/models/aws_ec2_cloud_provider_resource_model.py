@@ -37,7 +37,7 @@ class AWSEc2CloudProviderResourceModel:
     shared_vpc_role_arn: str
     aws_secret_access_key: str
     aws_access_key_id: str
-    additional_mgt_networks: List[str]
+    additional_mgmt_networks: List[str]
     tgw_id: str
     vgw_id: str
     vgw_cidrs: List[str]
@@ -52,7 +52,7 @@ class AWSEc2CloudProviderResourceModel:
             raise ValueError("AWS Mgmt VPC ID attribute must be set")
 
     def _validate_additional_mgt_networks(self):
-        for network in self.additional_mgt_networks:
+        for network in self.additional_mgmt_networks:
             msg = f"Additional Management Network is not correct {network} - {{}}"
             try:
                 ipaddress.IPv4Network(network)
@@ -75,11 +75,17 @@ class AWSEc2CloudProviderResourceModel:
         if self.vpc_mode is VpcMode.SHARED and not self.shared_vpc_role_arn:
             raise ValueError("You should specify Role Arn for the Shared VPC mode.")
 
+    def _validate_static_cidr(self):
+        if self.vpc_mode is VpcMode.STATIC and not self.static_vpc_cidr:
+            raise ValueError("You should set Static VPC CIDR for Static VPC mode")
+
     def validate(self):
         self._validate_aws_mgt_vpc_id()
         self._validate_vpc_id()
         self._validate_additional_mgt_networks()
         self._validate_role_arn()
+        self._validate_static_cidr()
+        self._validate_vgw_cidrs()
 
     @classmethod
     def from_resource(
@@ -101,7 +107,7 @@ class AWSEc2CloudProviderResourceModel:
             shared_vpc_id=_get("Shared VPC ID"),
             aws_secret_access_key=_get("AWS Secret Access Key"),
             aws_access_key_id=_get("AWS Access Key ID"),
-            additional_mgt_networks=get_items(_get("Additional Management Networks")),
+            additional_mgmt_networks=get_items(_get("Additional Management Networks")),
             tgw_id=_get("Transit Gateway ID"),
             vgw_id=_get("VPN Gateway ID"),
             vgw_cidrs=get_items(_get("VPN CIDRs")),

@@ -32,4 +32,4 @@ class TestCancellationService(TestCase):
         ) as assert_exc:
             cancellation_service.check_if_cancelled(cancellation_context, data=data)
 
-        self.assertEquals(assert_exc.exception.data, data)
+        self.assertEqual(assert_exc.exception.data, data)

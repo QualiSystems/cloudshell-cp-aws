@@ -20,4 +20,4 @@ class TestAwsResourceModelContext(TestCase):
             model_parser.convert_to_aws_resource_model.assert_called_with(
                 context.resource
             )
-            self.assertEquals(aws_ec2_resource_model, expected_resource_model_context)
+            self.assertEqual(aws_ec2_resource_model, expected_resource_model_context)

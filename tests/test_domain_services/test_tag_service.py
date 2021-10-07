@@ -73,14 +73,4 @@ class TestTagService(TestCase):
 
         value = self.tag_service.find_isolation_tag_value(tags=tags)
 
-        self.assertEquals(value, "Shared")
-
-    def test_get_is_public_tag(self):
-        # Arrange
-        public_value = "False"
-
-        # Act
-        public_tag = self.tag_service.get_is_public_tag(public_value)
-
-        # Assert
-        self.assertEquals(public_tag, {"Key": "IsPublic", "Value": public_value})
+        self.assertEqual(value, "Shared")

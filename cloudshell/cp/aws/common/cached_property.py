@@ -1,3 +1,6 @@
+from contextlib import suppress
+
+
 class cached_property:
     def __init__(self, func):
         self.__doc__ = getattr(func, "__doc__")
@@ -11,4 +14,5 @@ class cached_property:
 
 
 def invalidated_cache(instance, property_name: str):
-    del instance.__dict__[property_name]
+    with suppress(KeyError):
+        del instance.__dict__[property_name]

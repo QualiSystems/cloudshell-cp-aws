@@ -43,17 +43,17 @@ o0t3dj4ca7BPGwvGGMuEB4JPZmsS3AWMGXKSBpEpqMSxHMeTZtxo/ioi4mEGM5SMi0KLSnrWuuYX
         self.password_waiter.wait = Mock(return_value=self.encrypted)
 
         res = self.credentials_service.get_windows_credentials(instance, self.pem)
-        self.assertEquals(
+        self.assertEqual(
             self.decrypted,
             self.credentials_service.decrypt_password(self.pem, self.encrypted),
             res.password,
         )
-        self.assertEquals(
+        self.assertEqual(
             "Administrator", res.user_name, InstanceCredentialsService.DEFAULT_USER_NAME
         )
 
     def test_get_default_linux_credentials(self):
         cred = self.credentials_service.get_default_linux_credentials()
 
-        self.assertEquals(cred.user_name, "root")
+        self.assertEqual(cred.user_name, "root")
         self.assertFalse(cred.password)

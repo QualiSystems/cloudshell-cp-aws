@@ -109,7 +109,7 @@ class TestAWSShell(TestCase):
             actions_mock,
             self.expected_shell_context.logger,
         )
-        self.assertEquals(result, '{"driverResponse": {"actionResults": [true]}}')
+        self.assertEqual(result, '{"driverResponse": {"actionResults": [true]}}')
 
     def test_prepare_connectivity(self):
         # Assert
@@ -139,14 +139,9 @@ class TestAWSShell(TestCase):
                 self.aws_shell.prepare_connectivity_operation.prepare_connectivity
             )
             prepare_connectivity.assert_called_with(
-                ec2_client=self.expected_shell_context.aws_api.ec2_client,
-                default_ec2_session=(
-                    self.expected_shell_context.aws_api.default_ec2_session
-                ),
-                ec2_session=self.expected_shell_context.aws_api.ec2_session,
-                s3_session=self.expected_shell_context.aws_api.s3_session,
+                aws_clients=self.expected_shell_context.aws_api,
                 reservation=self.reservation_model,
-                aws_ec2_datamodel=self.expected_shell_context.aws_ec2_resource_model,
+                aws_model=self.expected_shell_context.aws_ec2_resource_model,
                 actions=actions_mock,
                 cancellation_context=cancellation_context,
                 cs_subnet_service=cs_subnet_service_inst,

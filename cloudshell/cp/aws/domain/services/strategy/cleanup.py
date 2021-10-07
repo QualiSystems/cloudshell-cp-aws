@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, List
 import attr
 
 from cloudshell.cp.aws.common.cached_property import cached_property
+from cloudshell.cp.aws.domain.handlers.ec2 import VpcPeeringHandler
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ class VpcNotFound(CleanupSandboxInfraException):
         super().__init__(f"No VPC was created for the reservation {r_id}")
 
 
-@attr.s(auto_attribs=True, slots=True, frozen=True)
+@attr.s(auto_attribs=True)
 class CleanupSandboxInfraAbsStrategy(metaclass=ABCMeta):
     _vpc_service: "VPCService"
     _key_pair_service: "KeyPairService"
@@ -190,7 +191,8 @@ class CleanupSandboxInfraDynamicVpcStrategy(CleanupSandboxInfraAbsStrategy):
 
     def _remove_peerings(self):
         self._logger.info(f"Remove all peerings in VPC '{self.vpc_name}'")
-        self._vpc_service.remove_all_peering(self.vpc)
+        for peering in VpcPeeringHandler.yield_live_peerings(self.vpc):
+            peering.delete()
 
     def _remove_blackhole_routes_mgt_vpc(self):
         mgmt_vpc = self._vpc_service.get_vpc_by_id(
@@ -204,9 +206,7 @@ class CleanupSandboxInfraDynamicVpcStrategy(CleanupSandboxInfraAbsStrategy):
 
     def _remove_custom_route_tables(self):
         self._logger.info(f"Remove custom route tables in VPC '{self.vpc_name}'")
-        self._vpc_service.remove_custom_route_tables(
-            self._aws_clients.ec2_session, self.vpc
-        )
+        self._vpc_service.remove_custom_route_tables(self.vpc)
 
     def _remove_vpc(self):
         self._logger.info(f"Remove VPC '{self.vpc_name}'")
@@ -345,6 +345,7 @@ def get_strategy(
     reservation_id: "str",
     logger: "Logger",
 ) -> CleanupSandboxInfraAbsStrategy:
+    # noinspection PyArgumentList
     return STRATEGIES[aws_model.vpc_mode](  # pycharm fails to get correct params
         vpc_service,
         key_pair_service,

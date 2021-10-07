@@ -34,10 +34,10 @@ class TestNetworkInterfaceService(TestCase):
         )
 
         # assert
-        self.assertEquals(dto["SubnetId"], subnet_id)
-        self.assertEquals(dto["DeviceIndex"], device_index)
-        self.assertEquals(dto["Groups"], groups)
-        self.assertEquals(dto["AssociatePublicIpAddress"], public_ip)
+        self.assertEqual(dto["SubnetId"], subnet_id)
+        self.assertEqual(dto["DeviceIndex"], device_index)
+        self.assertEqual(dto["Groups"], groups)
+        self.assertEqual(dto["AssociatePublicIpAddress"], public_ip)
 
     def test_build_network_interface_dto_no_public_ip(self):
         # arrange
@@ -57,9 +57,9 @@ class TestNetworkInterfaceService(TestCase):
         )
 
         # assert
-        self.assertEquals(dto["SubnetId"], subnet_id)
-        self.assertEquals(dto["DeviceIndex"], device_index)
-        self.assertEquals(dto["Groups"], groups)
+        self.assertEqual(dto["SubnetId"], subnet_id)
+        self.assertEqual(dto["DeviceIndex"], device_index)
+        self.assertEqual(dto["Groups"], groups)
         self.assertTrue("AssociatePublicIpAddress" not in dto)
 
     def test_get_network_interface_for_single_subnet_mode(self):
