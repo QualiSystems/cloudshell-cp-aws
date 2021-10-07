@@ -17,37 +17,11 @@ class TestSubnetService(TestCase):
         self.subnet_waiter = Mock()
         self.subnet_srv = SubnetService(self.tag_srv, self.subnet_waiter)
 
-    def test_create_subnet_for_vpc(self):
-        subnet = Mock()
-        self.vpc.create_subnet = Mock(return_value=subnet)
-        self.subnet_srv._get_subnet_name = Mock(return_value=self.vpc_name)
-
-        self.subnet_srv.create_subnet_for_vpc(
-            self.vpc,
-            self.cidr,
-            self.vpc_name,
-            self.availability_zone,
-            self.reservation_id,
-        )
-
-        self.vpc.create_subnet.assert_called_with(
-            CidrBlock=self.cidr, AvailabilityZone="a1"
-        )
-        self.subnet_waiter.wait.assert_called_with(subnet, self.subnet_waiter.AVAILABLE)
-        self.tag_srv.get_default_tags.assert_called_with(
-            self.vpc_name, self.reservation_id
-        )
-        self.assertEqual(subnet, self.vpc.create_subnet())
-
     def test_delete_subnet(self):
         subnet = Mock()
         res = self.subnet_srv.delete_subnet(subnet)
         self.assertTrue(res)
         self.assertTrue(subnet.delete.called)
-
-    def test_get_subnet_name(self):
-        subnet_name = self.subnet_srv._get_subnet_name("some_subnet")
-        self.assertEquals(subnet_name, "VPC Name: some_subnet")
 
     def test_get_vpc_subnets(self):
         # arrange
@@ -63,7 +37,7 @@ class TestSubnetService(TestCase):
         vpc.subnets.all.assert_called_once()
         self.assertTrue(subnet1 in subnets)
         self.assertTrue(subnet2 in subnets)
-        self.assertEquals(len(subnets), 2)
+        self.assertEqual(len(subnets), 2)
 
     def test_get_vpc_subnets_throw_if_empty(self):
         # arrange
@@ -90,19 +64,7 @@ class TestSubnetService(TestCase):
 
         # assert
         vpc.subnets.all.assert_called_once()
-        self.assertEquals(subnet1, subnet_result)
-
-    def test_set_subnet_route_table(self):
-        # arrange
-        ec2_client = Mock()
-        # act
-        self.subnet_srv.set_subnet_route_table(
-            ec2_client=ec2_client, subnet_id="123", route_table_id="456"
-        )
-        # assert
-        ec2_client.associate_route_table.assert_called_with(
-            RouteTableId="456", SubnetId="123"
-        )
+        self.assertEqual(subnet1, subnet_result)
 
     def test_create_subnet_nowait(self):
         # Act

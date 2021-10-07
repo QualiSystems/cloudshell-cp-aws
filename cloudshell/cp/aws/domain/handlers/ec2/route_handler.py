@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import attr
 
@@ -29,3 +29,19 @@ class RouteHandler:
         if self.is_blackhole:
             self.delete()
         return self.is_blackhole
+
+    @property
+    def gateway_id(self) -> Optional[str]:
+        return self._route.gateway_id
+
+    @property
+    def tgw_id(self) -> Optional[str]:
+        return self._route.transit_gateway_id
+
+    @property
+    def dst_cidr(self) -> Optional[str]:
+        return self._route.destination_cidr_block
+
+    def replace_peering_connection(self, peering_id: str):
+        if peering_id != self._route.vpc_peering_connection_id:
+            self._route.replace(VpcPeeringConnectionId=peering_id)

@@ -141,10 +141,10 @@ class TestInstanceWaiter(TestCase):
         )
 
         # assert
-        self.assertEquals(
+        self.assertEqual(
             instance_state["SystemStatus"]["Status"], self.instance_waiter.STATUS_OK
         )
-        self.assertEquals(
+        self.assertEqual(
             instance_state["InstanceStatus"]["Status"], self.instance_waiter.STATUS_OK
         )
 

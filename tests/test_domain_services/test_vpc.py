@@ -2,9 +2,6 @@ from unittest import TestCase
 from unittest.mock import Mock, call
 
 from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
-from cloudshell.cp.aws.domain.services.waiters.vpc_peering import (
-    VpcPeeringConnectionWaiter,
-)
 
 
 class TestVPCService(TestCase):
@@ -37,7 +34,6 @@ class TestVPCService(TestCase):
             vpc_waiter=self.vpc_waiter,
             vpc_peering_waiter=self.vpc_peering_waiter,
             sg_service=self.sg_service,
-            route_table_service=self.route_table_service,
             traffic_mirror_service=self.traffic_mirror_service,
         )
 
@@ -45,9 +41,9 @@ class TestVPCService(TestCase):
         internet_gate = Mock()
         self.vpc.internet_gateways = Mock()
         self.vpc.internet_gateways.all = Mock(return_value=[internet_gate])
-        res = self.vpc_service.get_all_internet_gateways(self.vpc)
+        res = self.vpc_service.get_all_igws(self.vpc)
 
-        self.assertEquals(res, [internet_gate])
+        self.assertEqual(res, [internet_gate])
 
     def test_remove_all_internet_gateways(self):
         internet_gate = Mock()
@@ -60,12 +56,11 @@ class TestVPCService(TestCase):
         self.assertTrue(internet_gate.delete.called)
 
     def test_create_and_attach_internet_gateway(self):
-
         internet_gate = Mock()
         internet_gate.id = "super_id"
         self.ec2_session.create_internet_gateway = Mock(return_value=internet_gate)
 
-        internet_gateway_id = self.vpc_service.create_and_attach_internet_gateway(
+        igw = self.vpc_service.create_and_attach_internet_gateway(
             self.ec2_session, self.vpc, self.reservation
         )
 
@@ -76,7 +71,7 @@ class TestVPCService(TestCase):
         self.tag_service.set_ec2_resource_tags.assert_called_once_with(
             resource=internet_gate, tags=self.tag_service.get_default_tags()
         )
-        self.assertEqual(internet_gateway_id, internet_gate.id)
+        self.assertEqual(igw.id, internet_gate.id)
 
     def test_create_vpc_for_reservation(self):
         vpc = self.vpc_service.create_vpc_for_reservation(
@@ -123,48 +118,6 @@ class TestVPCService(TestCase):
             self.ec2_session,
             self.reservation,
         )
-
-    def test_peer_vpc(self):
-        def change_to_active(vpc_peering_connection):
-            vpc_peering_connection.status["Code"] = VpcPeeringConnectionWaiter.ACTIVE
-
-        vpc1 = Mock()
-        vpc2 = Mock()
-        peered = Mock()
-        peered.status = {"Code": VpcPeeringConnectionWaiter.PENDING_ACCEPTANCE}
-        peered.accept = Mock(side_effect=change_to_active(peered))
-        self.ec2_session.create_vpc_peering_connection = Mock(return_value=peered)
-
-        reservation_model = Mock()
-
-        res = self.vpc_service.peer_vpcs(
-            self.ec2_session, vpc1, vpc2, reservation_model, Mock()
-        )
-
-        self.ec2_session.create_vpc_peering_connection.assert_called_once_with(
-            VpcId=vpc1, PeerVpcId=vpc2
-        )
-        self.assertEqual(peered.status["Code"], VpcPeeringConnectionWaiter.ACTIVE)
-        self.assertEqual(res, peered.id)
-
-    def test_remove_all_peering(self):
-        peering = Mock()
-        peering.status = {"Code": "ok"}
-        peering1 = Mock()
-        peering1.status = {"Code": "failed"}
-        peering2 = Mock()
-        peering2.status = {"Code": "aa"}
-        self.vpc.accepted_vpc_peering_connections = Mock()
-        self.vpc.accepted_vpc_peering_connections.all = Mock(
-            return_value=[peering, peering1, peering2]
-        )
-
-        res = self.vpc_service.remove_all_peering(self.vpc)
-
-        self.assertIsNotNone(res)
-        self.assertTrue(peering.delete.called)
-        self.assertFalse(peering1.delete.called)
-        self.assertTrue(peering2.delete.called)
 
     def test_remove_all_sgs(self):
         sg = Mock()
@@ -224,105 +177,6 @@ class TestVPCService(TestCase):
         self.assertTrue(self.vpc.delete.called)
         self.assertIsNotNone(res)
 
-    def test_get_or_create_subnet_for_vpc_1(self):  # Scenario(1): Get
-        # Arrange
-        subnet = Mock()
-        self.subnet_service.get_first_or_none_subnet_from_vpc = Mock(
-            return_value=subnet
-        )
-        # Act
-        result = self.vpc_service.get_or_create_subnet_for_vpc(
-            reservation=self.reservation,
-            cidr="1.2.3.4/24",
-            alias="MySubnet",
-            vpc=self.vpc,
-            ec2_client=self.ec2_client,
-            aws_ec2_datamodel=self.aws_ec2_datamodel,
-            logger=self.logger,
-        )
-        # Assert
-        self.assertEqual(result, subnet)
-
-    def test_get_or_create_subnet_for_vpc_2(self):  # Scenario(2): Create
-        # Arrange
-        subnet = Mock()
-        self.subnet_service.get_first_or_none_subnet_from_vpc = Mock(return_value=None)
-        self.reservation.reservation_id = "123"
-        self.vpc_service.get_or_pick_availability_zone = Mock(return_value="MyZone")
-        self.subnet_service.create_subnet_for_vpc = Mock(return_value=subnet)
-        # Act
-        result = self.vpc_service.get_or_create_subnet_for_vpc(
-            reservation=self.reservation,
-            cidr="1.2.3.4/24",
-            alias="MySubnet",
-            vpc=self.vpc,
-            ec2_client=self.ec2_client,
-            aws_ec2_datamodel=self.aws_ec2_datamodel,
-            logger=self.logger,
-        )
-        # Assert
-        self.assertEqual(result, subnet)
-        self.subnet_service.create_subnet_for_vpc.assert_called_once_with(
-            vpc=self.vpc,
-            cidr="1.2.3.4/24",
-            subnet_name="MySubnet Reservation: 123",
-            availability_zone="MyZone",
-            reservation=self.reservation,
-        )
-
-    def test_get_or_create_private_route_table_1(self):  # Scenario(1): Get
-        # Arrange
-        table = Mock()
-        self.route_table_service.get_route_table = Mock(return_value=table)
-        # Act
-        result = self.vpc_service.get_or_create_private_route_table(
-            self.vpc,
-            self.reservation,
-        )
-        # Assert
-        self.assertEqual(result, table)
-
-    def test_get_or_create_private_route_table_2(self):  # Scenario(2): Create
-        # Arrange
-        table = Mock()
-        self.reservation.reservation_id = "123"
-        self.route_table_service.get_route_table.return_value = None
-        self.route_table_service.create_route_table.return_value = table
-        # Act
-        result = self.vpc_service.get_or_create_private_route_table(
-            self.vpc,
-            self.reservation,
-        )
-        # Assert
-        self.assertEqual(result, table)
-        self.route_table_service.create_route_table.assert_called_once_with(
-            self.vpc,
-            self.reservation,
-            "Private RoutingTable Reservation: 123",
-        )
-
-    def test_get_or_throw_private_route_table(self):
-        # Arrange
-        self.route_table_service.get_route_table.return_value = None
-        # Act
-        with self.assertRaisesRegex(
-            Exception, "Routing table for non-public subnet was not found"
-        ):
-            self.vpc_service.get_or_throw_private_route_table(
-                self.vpc,
-                self.reservation,
-            )
-
-    def test_get_vpc_cidr(self):
-        # Arrange
-        self.vpc.cidr_block = "1.2.3.4/24"
-        # Act
-        result = self.vpc_service.get_vpc_cidr(
-            ec2_session=self.ec2_session, vpc_id=self.vpc_id
-        )
-        # Assert
-        self.assertEqual(result, "1.2.3.4/24")
-
     def test_get_or_pick_availability_zone_1(self):  # Scenario(1): from existing subnet
         # Arrange
         subnet = Mock()
@@ -369,33 +223,3 @@ class TestVPCService(TestCase):
                 vpc=self.vpc,
                 aws_ec2_datamodel=self.aws_ec2_datamodel,
             )
-
-    def test_remove_custom_route_tables(self):
-        # Arrange
-        tables = [Mock(), Mock()]
-        self.vpc.id = "123"
-        self.route_table_service.get_custom_route_tables = Mock(return_value=tables)
-        # Act
-        result = self.vpc_service.remove_custom_route_tables(
-            ec2_session=self.ec2_session, vpc=self.vpc
-        )
-        # Assert
-        self.assertTrue(result)
-        self.route_table_service.delete_table.assert_any_call(tables[0])
-        self.route_table_service.delete_table.assert_any_call(tables[1])
-
-    def test_set_main_route_table_tags(self):
-        # Arrange
-        table = Mock()
-        tags = Mock()
-        self.reservation.reservation_id = "123"
-        self.tag_service.get_default_tags = Mock(return_value=tags)
-        # Act
-        self.vpc_service.set_main_route_table_tags(
-            main_route_table=table, reservation=self.reservation
-        )
-        # Assert
-        self.tag_service.get_default_tags.assert_called_once_with(
-            "Main RoutingTable Reservation: 123", self.reservation
-        )
-        self.tag_service.set_ec2_resource_tags.assert_called_once_with(table, tags)

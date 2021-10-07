@@ -8,7 +8,6 @@ from cloudshell.cp.core.models import ConnectSubnet, DeployApp, VmDetailsData
 from cloudshell.cp.core.utils import single
 
 from cloudshell.cp.aws.common.deploy_data_holder import DeployDataHolder
-from cloudshell.cp.aws.common.driver_helper import CloudshellDriverHelper
 from cloudshell.cp.aws.domain.ami_management.operations.access_key_operation import (
     GetAccessKeyOperation,
 )
@@ -68,7 +67,6 @@ from cloudshell.cp.aws.domain.services.ec2.mirroring import TrafficMirrorService
 from cloudshell.cp.aws.domain.services.ec2.network_interface import (
     NetworkInterfaceService,
 )
-from cloudshell.cp.aws.domain.services.ec2.route_table import RouteTablesService
 from cloudshell.cp.aws.domain.services.ec2.security_group import SecurityGroupService
 from cloudshell.cp.aws.domain.services.ec2.subnet import SubnetService
 from cloudshell.cp.aws.domain.services.ec2.tags import TagService
@@ -120,7 +118,6 @@ class AWSShell:
         )
         self.ec2_storage_service = EC2StorageService()
         self.model_parser = AWSModelsParser()
-        self.cloudshell_session_helper = CloudshellDriverHelper()
         self.aws_session_manager = AWSSessionProvider()
         self.password_waiter = PasswordWaiter(self.cancellation_service)
         self.vm_custom_params_extractor = VmCustomParamsExtractor()
@@ -132,7 +129,6 @@ class AWSShell:
         self.vpc_peering_waiter = VpcPeeringConnectionWaiter()
         self.key_pair_service = KeyPairService(self.s3_service)
         self.vpc_waiter = VPCWaiter()
-        self.route_tables_service = RouteTablesService(self.tag_service)
         self.network_interface_service = NetworkInterfaceService(
             subnet_service=self.subnet_service,
             security_group_service=self.security_group_service,
@@ -153,7 +149,6 @@ class AWSShell:
             vpc_waiter=self.vpc_waiter,
             vpc_peering_waiter=self.vpc_peering_waiter,
             sg_service=self.security_group_service,
-            route_table_service=self.route_tables_service,
             traffic_mirror_service=self.traffic_mirror_service,
         )
         self.prepare_connectivity_operation = PrepareSandboxInfraOperation(
@@ -161,8 +156,6 @@ class AWSShell:
             security_group_service=self.security_group_service,
             key_pair_service=self.key_pair_service,
             tag_service=self.tag_service,
-            route_table_service=self.route_tables_service,
-            cancellation_service=self.cancellation_service,
             subnet_service=self.subnet_service,
             subnet_waiter=self.subnet_waiter,
         )
@@ -277,18 +270,14 @@ class AWSShell:
             )
 
             results = self.prepare_connectivity_operation.prepare_connectivity(
-                ec2_client=shell_context.aws_api.ec2_client,
-                default_ec2_session=shell_context.aws_api.default_ec2_session,
-                ec2_session=shell_context.aws_api.ec2_session,
-                s3_session=shell_context.aws_api.s3_session,
+                aws_clients=shell_context.aws_api,
                 reservation=reservation,
-                aws_ec2_datamodel=shell_context.aws_ec2_resource_model,
+                aws_model=shell_context.aws_ec2_resource_model,
                 actions=actions,
                 cancellation_context=cancellation_context,
                 cs_subnet_service=cs_subnet_service,
                 logger=shell_context.logger,
             )
-
             return results
 
     def get_inventory(self, command_context):

@@ -130,7 +130,7 @@ class TestDeployOperation(TestCase):
         )
 
         # assert
-        self.assertEquals(extracted_id, instance_id)
+        self.assertEqual(extracted_id, instance_id)
 
     def test_deploy(self):
         # prepare
@@ -530,9 +530,9 @@ class TestDeployOperation(TestCase):
             logger=self.logger,
         )
 
-        self.assertEquals(aws_model.min_count, 1)
-        self.assertEquals(aws_model.max_count, 1)
-        self.assertEquals(aws_model.aws_key, "keypair")
+        self.assertEqual(aws_model.min_count, 1)
+        self.assertEqual(aws_model.max_count, 1)
+        self.assertEqual(aws_model.aws_key, "keypair")
         self.assertTrue(len(aws_model.security_group_ids) == 1)
         self.assertTrue(len(aws_model.network_interfaces) == 1)
 
@@ -696,11 +696,11 @@ class TestDeployOperation(TestCase):
         )
 
         # assert
-        self.assertEquals(res_model_1.device_index, 0)
-        self.assertEquals(res_model_2.device_index, 1)
-        self.assertEquals(len(net_interfaces), 2)
-        self.assertEquals(net_interfaces[0]["SubnetId"], "sub1")
-        self.assertEquals(net_interfaces[1]["SubnetId"], "sub2")
+        self.assertEqual(res_model_1.device_index, 0)
+        self.assertEqual(res_model_2.device_index, 1)
+        self.assertEqual(len(net_interfaces), 2)
+        self.assertEqual(net_interfaces[0]["SubnetId"], "sub1")
+        self.assertEqual(net_interfaces[1]["SubnetId"], "sub2")
 
     def test_prepare_network_config_results_dto_returns_empty_array_when_no_network_config(  # noqa
         self,
@@ -741,15 +741,15 @@ class TestDeployOperation(TestCase):
             models, network_actions
         )
 
-        self.assertEquals(len(dtos), 2)
+        self.assertEqual(len(dtos), 2)
         dto1 = dtos[0]
         dto2 = dtos[1]
-        self.assertEquals(dto1.actionId, "aaa")
-        self.assertEquals(dto2.actionId, "bbb")
+        self.assertEqual(dto1.actionId, "aaa")
+        self.assertEqual(dto2.actionId, "bbb")
         self.assertTrue(dto1.success)
         self.assertTrue(dto2.success)
-        self.assertEquals(dto1.type, "ConnectToSubnet")
-        self.assertEquals(dto2.type, "ConnectToSubnet")
+        self.assertEqual(dto1.type, "ConnectToSubnet")
+        self.assertEqual(dto2.type, "ConnectToSubnet")
         self.assertTrue('"interface_id": "interface1"' in dto1.interface)
         self.assertTrue('"Device Index": 0' in dto1.interface)
         self.assertTrue('"IP": "priv1"' in dto1.interface)
@@ -800,8 +800,8 @@ class TestDeployOperation(TestCase):
         models = self.deploy_operation._prepare_network_result_models(network_actions)
 
         # assert
-        self.assertEquals(len(models), 1)
-        self.assertEquals(models[0].action_id, "")
+        self.assertEqual(len(models), 1)
+        self.assertEqual(models[0].action_id, "")
         self.assertTrue(isinstance(models[0], DeployNetworkingResultModel))
 
     def test__prepare_network_result_models_returns_result_model_per_action(self):
@@ -818,11 +818,11 @@ class TestDeployOperation(TestCase):
         models = self.deploy_operation._prepare_network_result_models(network_actions)
 
         # assert
-        self.assertEquals(len(models), 2)
+        self.assertEqual(len(models), 2)
         self.assertTrue(isinstance(models[0], DeployNetworkingResultModel))
         self.assertTrue(isinstance(models[1], DeployNetworkingResultModel))
-        self.assertEquals(models[0].action_id, action1.actionId)
-        self.assertEquals(models[1].action_id, action2.actionId)
+        self.assertEqual(models[0].action_id, action1.actionId)
+        self.assertEqual(models[1].action_id, action2.actionId)
 
     def test_populate_network_config_results_with_interface_data(self):
         # arrange
@@ -855,12 +855,12 @@ class TestDeployOperation(TestCase):
         )
 
         # assert
-        self.assertEquals(network_config_results[0].interface_id, "int1")
-        self.assertEquals(network_config_results[0].private_ip, "pri_ip_1")
-        self.assertEquals(network_config_results[0].mac_address, "mac1")
-        self.assertEquals(network_config_results[0].public_ip, "pub_ip_1")
+        self.assertEqual(network_config_results[0].interface_id, "int1")
+        self.assertEqual(network_config_results[0].private_ip, "pri_ip_1")
+        self.assertEqual(network_config_results[0].mac_address, "mac1")
+        self.assertEqual(network_config_results[0].public_ip, "pub_ip_1")
 
-        self.assertEquals(network_config_results[1].interface_id, "int2")
-        self.assertEquals(network_config_results[1].private_ip, "pri_ip_2")
-        self.assertEquals(network_config_results[1].mac_address, "mac2")
-        self.assertEquals(network_config_results[1].public_ip, "")
+        self.assertEqual(network_config_results[1].interface_id, "int2")
+        self.assertEqual(network_config_results[1].private_ip, "pri_ip_2")
+        self.assertEqual(network_config_results[1].mac_address, "mac2")
+        self.assertEqual(network_config_results[1].public_ip, "")

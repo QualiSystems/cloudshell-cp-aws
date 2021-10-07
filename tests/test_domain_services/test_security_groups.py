@@ -18,32 +18,32 @@ class TestSecurityGroups(TestCase):
         permission_object = SecurityGroupService.get_ip_permission_object(
             self.port_data
         )
-        self.assertEquals(str(permission_object["FromPort"]), self.port_data.from_port)
-        self.assertEquals(str(permission_object["ToPort"]), self.port_data.to_port)
-        self.assertEquals(
+        self.assertEqual(str(permission_object["FromPort"]), self.port_data.from_port)
+        self.assertEqual(str(permission_object["ToPort"]), self.port_data.to_port)
+        self.assertEqual(
             permission_object["IpRanges"][0]["CidrIp"], self.port_data.destination
         )
-        self.assertEquals(permission_object["IpProtocol"], self.port_data.protocol)
+        self.assertEqual(permission_object["IpProtocol"], self.port_data.protocol)
 
     def test_port_group_parser(self):
         ports_attribute = " 1-3:tcp; 1:udp; 1-3;1;  "
         ports = PortGroupAttributeParser.parse_port_group_attribute(ports_attribute)
 
-        self.assertEquals(ports[0].from_port, "1")
-        self.assertEquals(ports[0].to_port, "3")
-        self.assertEquals(ports[0].protocol, "tcp")
+        self.assertEqual(ports[0].from_port, "1")
+        self.assertEqual(ports[0].to_port, "3")
+        self.assertEqual(ports[0].protocol, "tcp")
 
-        self.assertEquals(ports[1].from_port, "1")
-        self.assertEquals(ports[1].to_port, "1")
-        self.assertEquals(ports[1].protocol, "udp")
+        self.assertEqual(ports[1].from_port, "1")
+        self.assertEqual(ports[1].to_port, "1")
+        self.assertEqual(ports[1].protocol, "udp")
 
-        self.assertEquals(ports[2].from_port, "1")
-        self.assertEquals(ports[2].to_port, "3")
-        self.assertEquals(ports[2].protocol, "tcp")
+        self.assertEqual(ports[2].from_port, "1")
+        self.assertEqual(ports[2].to_port, "3")
+        self.assertEqual(ports[2].protocol, "tcp")
 
-        self.assertEquals(ports[3].from_port, "1")
-        self.assertEquals(ports[3].to_port, "1")
-        self.assertEquals(ports[3].protocol, "tcp")
+        self.assertEqual(ports[3].from_port, "1")
+        self.assertEqual(ports[3].to_port, "1")
+        self.assertEqual(ports[3].protocol, "tcp")
 
     def test_delete_sg(self):
         sg = Mock()
@@ -73,19 +73,6 @@ class TestSecurityGroups(TestCase):
                 "vpc",
             )
         )
-
-    def test_get_sg_names(self):
-        reservation_id = "res"
-        res = self.sg_service.get_sandbox_security_group_names(
-            reservation_id=reservation_id
-        )
-        security_group_names = [
-            SecurityGroupService.CLOUDSHELL_SANDBOX_DEFAULT_SG.format(reservation_id),
-            SecurityGroupService.CLOUDSHELL_SANDBOX_ISOLATED_FROM_SANDBOX_SG.format(
-                reservation_id
-            ),
-        ]
-        self.assertEqual(res, security_group_names)
 
     def test_get_default_sg_name(self):
         reservation_id = "res"
