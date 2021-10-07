@@ -10,7 +10,6 @@ from cloudshell.cp.aws.domain.handlers.ec2 import (
     RouteTableNotFound,
     TagsHandler,
 )
-from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 if TYPE_CHECKING:
     from logging import Logger
@@ -18,9 +17,6 @@ if TYPE_CHECKING:
     from mypy_boto3_ec2 import EC2ServiceResource
     from mypy_boto3_ec2.service_resource import InternetGateway, Subnet, Vpc
 
-    from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
-        AWSEc2CloudProviderResourceModel,
-    )
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
@@ -106,17 +102,6 @@ class VPCService:
             raise ValueError("Too many vpcs for the reservation")
 
         return vpcs[0]
-
-    def get_vpc(
-        self,
-        ec2_session: "EC2ServiceResource",
-        reservation_id: str,
-        aws_ec2_datamodel: "AWSEc2CloudProviderResourceModel",
-    ) -> Optional["Vpc"]:
-        if aws_ec2_datamodel.vpc_mode is VpcMode.SHARED:
-            return self.get_vpc_by_id(ec2_session, aws_ec2_datamodel.shared_vpc_id)
-        else:
-            return self.find_vpc_for_reservation(ec2_session, reservation_id)
 
     @staticmethod
     def get_vpc_by_id(ec2_session: "EC2ServiceResource", vpc_id: str) -> "Vpc":

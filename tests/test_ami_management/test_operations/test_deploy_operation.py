@@ -6,17 +6,19 @@ from cloudshell.cp.core.models import (
     ConnectToSubnetParams,
     PrepareCloudInfra,
 )
+from cloudshell.shell.core.driver_context import CancellationContext
 
 from cloudshell.cp.aws.domain.ami_management.operations.deploy_operation import (
     DeployAMIOperation,
 )
 from cloudshell.cp.aws.domain.common.exceptions import CancellationException
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
 
 
 class TestDeployOperation(TestCase):
     def setUp(self):
-        self.ec2_datamodel = Mock()
+        self.ec2_datamodel = Mock(vpc_mode=VpcMode.DYNAMIC)
         self.ec2_session = Mock()
         self.ec2_client = Mock()
         self.s3_session = Mock()
@@ -43,7 +45,6 @@ class TestDeployOperation(TestCase):
             subnet_service=self.subnet_service,
             elastic_ip_service=self.elastic_ip_service,
             network_interface_service=self.network_interface_service,
-            cancellation_service=self.cancellation_service,
             device_index_strategy=self.device_index_strategy,
             vm_details_provider=self.vm_details_provider,
         )
@@ -52,7 +53,7 @@ class TestDeployOperation(TestCase):
         # arrange
         ami_deploy_action = Mock()
         network_actions = None
-        cancellation_context = Mock()
+        cancellation_context = CancellationContext()
         inst_name = "my name"
         reservation = Mock()
         self.deploy_operation._create_security_group_for_instance = Mock()
@@ -62,20 +63,19 @@ class TestDeployOperation(TestCase):
         self.deploy_operation._prepare_network_result_models = Mock()
 
         # act & assert
-        self.assertRaises(
-            Exception,
-            self.deploy_operation.deploy,
-            self.ec2_session,
-            self.s3_session,
-            inst_name,
-            reservation,
-            self.ec2_datamodel,
-            ami_deploy_action,
-            network_actions,
-            self.ec2_client,
-            cancellation_context,
-            self.logger,
-        )
+        with self.assertRaises(Exception):
+            self.deploy_operation.deploy(
+                self.ec2_session,
+                self.s3_session,
+                inst_name,
+                reservation,
+                self.ec2_datamodel,
+                ami_deploy_action,
+                network_actions,
+                self.ec2_client,
+                cancellation_context,
+                self.logger,
+            )
         self.deploy_operation._rollback_deploy.assert_called_once()
 
     def test_rollback(self):
@@ -147,7 +147,7 @@ class TestDeployOperation(TestCase):
 
         self._mock_deploy_operation(ami_deployment_info, network_config_results)
 
-        cancellation_context = Mock()
+        cancellation_context = CancellationContext()
         inst_name = "my name"
         reservation = Mock()
         network_actions = None
@@ -242,7 +242,7 @@ class TestDeployOperation(TestCase):
 
         self._mock_deploy_operation(ami_deployment_info, network_config_results)
 
-        cancellation_context = Mock()
+        cancellation_context = CancellationContext()
         inst_name = "my name"
         reservation = Mock()
         network_actions = None
@@ -770,7 +770,6 @@ class TestDeployOperation(TestCase):
             self.subnet_service,
             self.elastic_ip_service,
             self.network_interface_service,
-            self.cancellation_service,
             self.device_index_strategy,
             self.vm_details_provider,
         )
