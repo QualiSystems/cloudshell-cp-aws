@@ -107,6 +107,6 @@ class TestAllocateMissingValuesDeviceIndexStrategy(TestCase):
 
         # assert
         # the order in witch the strategy assign device indexes is not guaranteed
-        self.assertEquals(action1.actionParams.vnicName, 0)
-        self.assertEquals(action2.actionParams.vnicName, 1)
-        self.assertEquals(action3.actionParams.vnicName, 2)
+        self.assertEqual(action1.actionParams.vnicName, 0)
+        self.assertEqual(action2.actionParams.vnicName, 1)
+        self.assertEqual(action3.actionParams.vnicName, 2)

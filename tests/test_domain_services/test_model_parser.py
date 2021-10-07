@@ -214,34 +214,32 @@ class TestModelParser(TestCase):
         model = self.request_parser.convert_driver_request_to_actions(json_str)[0]
 
         # Assert
-        self.assertEquals(
-            model.actionParams.deployment.customModel.aws_ami_id, "ami_id"
-        )
-        self.assertEquals(model.actionParams.deployment.customModel.storage_size, "0")
-        self.assertEquals(model.actionParams.deployment.customModel.storage_iops, "0")
-        self.assertEquals(
+        self.assertEqual(model.actionParams.deployment.customModel.aws_ami_id, "ami_id")
+        self.assertEqual(model.actionParams.deployment.customModel.storage_size, "0")
+        self.assertEqual(model.actionParams.deployment.customModel.storage_iops, "0")
+        self.assertEqual(
             model.actionParams.deployment.customModel.storage_type, "storage_type"
         )
-        self.assertEquals(
+        self.assertEqual(
             model.actionParams.deployment.customModel.instance_type, "t.nano"
         )
-        self.assertEquals(
+        self.assertEqual(
             model.actionParams.deployment.customModel.iam_role, "top secret"
         )
-        self.assertEquals(
+        self.assertEqual(
             model.actionParams.deployment.customModel.root_volume_name, "root_vol_name"
         )
         self.assertFalse(model.actionParams.deployment.customModel.wait_for_ip)
         self.assertTrue(model.actionParams.deployment.customModel.wait_for_status_check)
         self.assertFalse(model.actionParams.deployment.customModel.autoload)
-        self.assertEquals(model.actionParams.deployment.customModel.inbound_ports, "80")
+        self.assertEqual(model.actionParams.deployment.customModel.inbound_ports, "80")
         self.assertFalse(model.actionParams.deployment.customModel.wait_for_credentials)
         self.assertFalse(model.actionParams.deployment.customModel.add_public_ip)
         self.assertTrue(model.actionParams.deployment.customModel.allocate_elastic_ip)
         self.assertFalse(
             model.actionParams.deployment.customModel.enable_source_dest_check
         )
-        self.assertEquals(
+        self.assertEqual(
             model.actionParams.deployment.customModel.status_check_timeout, 100
         )
 
@@ -411,9 +409,9 @@ class TestModelParser(TestCase):
         model = self.request_parser.convert_driver_request_to_actions(json)[0]
 
         # Assert
-        self.assertEquals(model.actionId, "some_id")
-        self.assertEquals(len(model.actionParams.subnetServiceAttributes), 6)
-        self.assertEquals(model.actionParams.subnetServiceAttributes["Public"], "True")
+        self.assertEqual(model.actionId, "some_id")
+        self.assertEqual(len(model.actionParams.subnetServiceAttributes), 6)
+        self.assertEqual(model.actionParams.subnetServiceAttributes["Public"], "True")
         self.assertTrue(isinstance(model.actionParams, ConnectToSubnetParams))
 
     def test_subnet_connection_params_check_is_public_subnet_true(self):

@@ -106,7 +106,7 @@ class TestDeployedAppPortsOperation(TestCase):
             vmdetails.vmCustomParams
         )
 
-        self.assertEquals(
+        self.assertEqual(
             result,
             "No ports are open for inbound and outbound traffic outside of the Sandbox",
         )
@@ -134,4 +134,4 @@ class TestDeployedAppPortsOperation(TestCase):
             allow_all_storage_traffic=True,
         )
 
-        self.assertEquals(result, "App Name: my ami name\nAllow Sandbox Traffic: True")
+        self.assertEqual(result, "App Name: my ami name\nAllow Sandbox Traffic: True")

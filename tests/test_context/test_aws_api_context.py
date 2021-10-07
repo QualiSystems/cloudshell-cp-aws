@@ -25,4 +25,4 @@ class TestAwsApiContext(TestCase):
                 aws_ec2_data_model=aws_ec2_resource_model,
             )
 
-            self.assertEquals(aws_api, expected_session)
+            self.assertEqual(aws_api, expected_session)

@@ -1,21 +1,22 @@
-import traceback
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Iterable, List, Optional
 
 from retrying import retry
 
-from cloudshell.cp.aws.common import retry_helper
 from cloudshell.cp.aws.domain.conncetivity.operations.traffic_mirror_cleaner import (
     TrafficMirrorCleaner,
 )
-from cloudshell.cp.aws.domain.handlers.ec2 import RouteTableHandler, RouteTableNotFound
-from cloudshell.cp.aws.domain.handlers.ec2.tags_handler import TagsHandler
+from cloudshell.cp.aws.domain.handlers.ec2 import (
+    RouteTableHandler,
+    RouteTableNotFound,
+    TagsHandler,
+)
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 if TYPE_CHECKING:
     from logging import Logger
 
     from mypy_boto3_ec2 import EC2ServiceResource
-    from mypy_boto3_ec2.service_resource import RouteTable, Subnet, Vpc
+    from mypy_boto3_ec2.service_resource import InternetGateway, Subnet, Vpc
 
     from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
         AWSEc2CloudProviderResourceModel,
@@ -34,12 +35,6 @@ class FailedToDeleteRouteTables(VpcError):
 
 class VPCService:
     VPC_RESERVATION = "VPC Reservation: {0}"
-    SUBNET_RESERVATION = "{0} Reservation: {1}"
-    MAIN_ROUTE_TABLE_RESERVATION = "Main RoutingTable Reservation: {0}"
-    PRIVATE_ROUTE_TABLE_RESERVATION = "Private RoutingTable Reservation: {0}"
-    # RT for public subnets in Shared VPC
-    PUBLIC_ROUTE_TABLE_RESERVATION = "Public RoutingTable Reservation: {}"
-    PEERING_CONNECTION = "Peering connection for {0} with management vpc"
 
     def __init__(
         self,
@@ -49,7 +44,6 @@ class VPCService:
         vpc_waiter,
         vpc_peering_waiter,
         sg_service,
-        route_table_service,
         traffic_mirror_service,
     ):
         """# noqa
@@ -65,8 +59,6 @@ class VPCService:
         :type vpc_peering_waiter: cloudshell.cp.aws.domain.services.waiters.vpc_peering.VpcPeeringConnectionWaiter
         :param sg_service: Security Group Service
         :type sg_service: cloudshell.cp.aws.domain.services.ec2.security_group.SecurityGroupService
-        :param route_table_service:
-        :type route_table_service: cloudshell.cp.aws.domain.services.ec2.route_table.RouteTablesService
         """
         self.tag_service = tag_service
         self.subnet_service = subnet_service
@@ -74,7 +66,6 @@ class VPCService:
         self.vpc_waiter = vpc_waiter
         self.vpc_peering_waiter = vpc_peering_waiter
         self.sg_service = sg_service
-        self.route_table_service = route_table_service
         self.traffic_mirror_service = traffic_mirror_service
 
     def create_vpc_for_reservation(self, ec2_session, reservation, cidr):
@@ -95,79 +86,6 @@ class VPCService:
         self._set_tags(vpc_name=vpc_name, reservation=reservation, vpc=vpc)
 
         return vpc
-
-    def get_or_create_subnet_for_vpc(
-        self, reservation, cidr, alias, vpc, ec2_client, aws_ec2_datamodel, logger
-    ):
-
-        logger.info(f"Check if subnet (cidr={cidr}) already exists")
-        subnet = self.subnet_service.get_first_or_none_subnet_from_vpc(
-            vpc=vpc, cidr=cidr
-        )
-        if subnet:
-            return subnet
-
-        subnet_name = self.SUBNET_RESERVATION.format(alias, reservation.reservation_id)
-        availability_zone = self.get_or_pick_availability_zone(
-            ec2_client, vpc, aws_ec2_datamodel
-        )
-        logger.info(
-            f"Create subnet (alias: {alias}, cidr: {cidr}, availability-zone: "
-            f"{availability_zone})"
-        )
-        return self.subnet_service.create_subnet_for_vpc(
-            vpc=vpc,
-            cidr=cidr,
-            subnet_name=subnet_name,
-            availability_zone=availability_zone,
-            reservation=reservation,
-        )
-
-    def get_or_throw_private_route_table(
-        self, vpc: "Vpc", reservation_id: str
-    ) -> "RouteTable":
-        route_table_name = self.PRIVATE_ROUTE_TABLE_RESERVATION.format(reservation_id)
-        route_table = self.route_table_service.get_route_table(vpc, route_table_name)
-        if not route_table:
-            raise ValueError("Routing table for non-public subnet was not found")
-        return route_table
-
-    def get_or_create_private_route_table(
-        self, vpc: "Vpc", reservation: "ReservationModel"
-    ) -> "RouteTable":
-        route_table_name = self.PRIVATE_ROUTE_TABLE_RESERVATION.format(
-            reservation.reservation_id
-        )
-        route_table = self.route_table_service.get_route_table(vpc, route_table_name)
-        if not route_table:
-            route_table = self.route_table_service.create_route_table(
-                vpc, reservation, route_table_name
-            )
-        return route_table
-
-    def get_or_create_public_route_table(
-        self,
-        vpc: "Vpc",
-        reservation: "ReservationModel",
-    ) -> "RouteTable":
-        name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation.reservation_id)
-        route_table = self.route_table_service.get_route_table(vpc, name)
-        if not route_table:
-            route_table = self.route_table_service.create_route_table(
-                vpc, reservation, name
-            )
-        return route_table
-
-    def get_or_throw_public_route_table(
-        self,
-        vpc: "Vpc",
-        reservation_id: str,
-    ) -> "RouteTable":
-        name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation_id)
-        route_table = self.route_table_service.get_route_table(vpc, name)
-        if not route_table:
-            raise ValueError("Routing table for public subnet was not found")
-        return route_table
 
     def find_vpc_for_reservation(
         self, ec2_session: "EC2ServiceResource", reservation_id: str
@@ -204,125 +122,56 @@ class VPCService:
     def get_vpc_by_id(ec2_session: "EC2ServiceResource", vpc_id: str) -> "Vpc":
         return ec2_session.Vpc(vpc_id)
 
-    def peer_vpcs(
-        self,
-        ec2_session: "EC2ServiceResource",
-        vpc_id1: str,
-        vpc_id2: str,
-        reservation_model: "ReservationModel",
-        logger: "Logger",
-    ) -> str:
-        """Will create a peering request between 2 vpc's and approve it."""
-        # create peering connection
-        logger.info(f"Creating VPC Peering between {vpc_id1} to {vpc_id2} ")
-        vpc_peer_connection = ec2_session.create_vpc_peering_connection(
-            VpcId=vpc_id1, PeerVpcId=vpc_id2
-        )
-        logger.info(
-            f"VPC Peering created {vpc_peer_connection.id}, "
-            f"State : {vpc_peer_connection.status['Code']}"
-        )
-
-        # wait until pending acceptance
-        logger.info("Waiting until VPC peering state will be pending-acceptance ")
-        self.vpc_peering_waiter.wait(
-            vpc_peer_connection, self.vpc_peering_waiter.PENDING_ACCEPTANCE
-        )
-        logger.info(f"VPC peering state {vpc_peer_connection.status['Code']}")
-
-        # accept peering request (will try 3 times)
-        self.accept_vpc_peering(vpc_peer_connection, logger)
-
-        # wait until active
-        logger.info(
-            f"Waiting until VPC peering state will be {self.vpc_peering_waiter.ACTIVE}"
-        )
-        self.vpc_peering_waiter.wait(
-            vpc_peer_connection, self.vpc_peering_waiter.ACTIVE
-        )
-        logger.info(f"VPC peering state {vpc_peer_connection.status['Code']}")
-
-        # set tags on peering connection
-        tags = self.tag_service.get_default_tags(
-            self._get_peering_connection_name(reservation_model), reservation_model
-        )
-        retry_helper.do_with_retry(
-            lambda: ec2_session.create_tags(
-                Resources=[vpc_peer_connection.id], Tags=tags
-            )
-        )
-
-        return vpc_peer_connection.id
-
-    @retry(stop_max_attempt_number=30, wait_fixed=1000)
-    def accept_vpc_peering(self, vpc_peer_connection, logger):
-        logger.info(f"Accepting VPC Peering {vpc_peer_connection.id}")
-        vpc_peer_connection.accept()
-        logger.info(f"VPC Peering {vpc_peer_connection.id} accepted")
-
-    def get_peering_connection_by_reservation_id(self, ec2_session, reservation_id):
-        """# noqa
-        :param ec2_session:
-        :param str reservation_id:
-        :return:
-        """
-        return list(
-            ec2_session.vpc_peering_connections.filter(
-                Filters=[{"Name": "tag:ReservationId", "Values": [reservation_id]}]
-            )
-        )
-
-    def _get_peering_connection_name(self, reservation_model):
-        return self.PEERING_CONNECTION.format(reservation_model.reservation_id)
-
     def _set_tags(self, vpc_name, reservation, vpc):
         tags = self.tag_service.get_default_tags(vpc_name, reservation)
         self.tag_service.set_ec2_resource_tags(vpc, tags)
 
-    def remove_all_internet_gateways(self, vpc):
-        """Removes all internet gateways from a VPC.
+    def remove_all_internet_gateways(self, vpc: "Vpc"):
+        """Removes all internet gateways from a VPC."""
+        for igw in self.get_all_igws(vpc):
+            igw.detach_from_vpc(VpcId=vpc.id)
+            igw.delete()
 
-        :param vpc: EC2 VPC instance
-        """
-        internet_gateways = self.get_all_internet_gateways(vpc)
-        for ig in internet_gateways:
-            ig.detach_from_vpc(VpcId=vpc.id)
-            ig.delete()
-
-    def get_all_internet_gateways(self, vpc):
-        """Get.
-
-        :param vpc:
-        :return:
-        :rtype: list
-        """
+    @staticmethod
+    def get_all_igws(vpc: "Vpc") -> Iterable["InternetGateway"]:
+        """Get all Internet Gateways."""
         return list(vpc.internet_gateways.all())
+
+    @classmethod
+    def get_first_igw(cls, vpc: "Vpc") -> Optional["InternetGateway"]:
+        return next(iter(cls.get_all_igws(vpc)), None)
 
     def create_and_attach_internet_gateway(
         self,
         ec2_session: "EC2ServiceResource",
         vpc: "Vpc",
         reservation: "ReservationModel",
-    ) -> str:
-        internet_gateway = ec2_session.create_internet_gateway()
+    ) -> "InternetGateway":
+        igw = ec2_session.create_internet_gateway()
         tags = self.tag_service.get_default_tags(
             f"IGW {reservation.reservation_id}", reservation
         )
-        self.tag_service.set_ec2_resource_tags(resource=internet_gateway, tags=tags)
-        vpc.attach_internet_gateway(InternetGatewayId=internet_gateway.id)
-        return internet_gateway.id
+        self.tag_service.set_ec2_resource_tags(resource=igw, tags=tags)
+        vpc.attach_internet_gateway(InternetGatewayId=igw.id)
+        return igw
 
-    def remove_all_peering(self, vpc):
-        """Remove all peering to that VPC.
-
-        :param vpc: EC2 VPC instance
-        :return:
-        """
-        peerings = list(vpc.accepted_vpc_peering_connections.all())
-        for peer in peerings:
-            if peer.status["Code"] != "failed":
-                peer.delete()
-        return True
+    def get_or_create_igw(
+        self,
+        ec2_session: "EC2ServiceResource",
+        vpc: "Vpc",
+        reservation: "ReservationModel",
+        logger: "Logger",
+    ) -> "InternetGateway":
+        vpc_name = self.get_name(vpc)
+        logger.info(f"Getting first IGW from the VPC '{vpc_name}'")
+        igw = self.get_first_igw(vpc)
+        if not igw:
+            logger.info(
+                f"IGW for the VPC {vpc_name} not found. Creating a new one and "
+                f"attaching to the VPC"
+            )
+            igw = self.create_and_attach_internet_gateway(ec2_session, vpc, reservation)
+        return igw
 
     def remove_all_security_groups(self, vpc: "Vpc"):
         security_groups = list(vpc.security_groups.all())
@@ -366,10 +215,7 @@ class VPCService:
         vpc.delete()
         return True
 
-    def get_vpc_cidr(self, ec2_session, vpc_id):
-        vpc = ec2_session.Vpc(vpc_id)
-        return vpc.cidr_block
-
+    @retry(stop_max_attempt_number=30, wait_fixed=1000)
     def modify_vpc_attribute(self, ec2_client, vpc_id, enable_dns_hostnames):
         """Enables VPC Attribute.
 
@@ -408,24 +254,18 @@ class VPCService:
         # edge case - not supposed to happen
         raise ValueError("No AvailabilityZone is available for this vpc")
 
-    def remove_custom_route_tables(self, ec2_session, vpc):
-        """Will remove all the routing tables of that vpc.
-
-        :param vpc: EC2 VPC instance
-        :return:
-        """
-        custom_tables = self.route_table_service.get_custom_route_tables(
-            ec2_session, vpc.id
-        )
-        for table in custom_tables:
-            self.route_table_service.delete_table(table)
-        return True
+    @staticmethod
+    def remove_custom_route_tables(vpc: "Vpc"):
+        """Will remove all custom routing tables of that vpc."""
+        for rt in RouteTableHandler.yield_custom_rts(vpc):
+            rt.delete()
 
     @staticmethod
     def remove_route_tables_for_reservation(vpc: "Vpc", reservation_id: str):
         errors = []
-        for fn in RouteTableHandler.get_private, RouteTableHandler.get_public:
+        for fn in RouteTableHandler.get_private_rt, RouteTableHandler.get_public_rt:
             try:
+                # noinspection PyArgumentList
                 rt = fn(vpc, reservation_id)  # pycharm failed to get correct params
                 rt.delete()
             except RouteTableNotFound:
@@ -434,31 +274,6 @@ class VPCService:
                 errors.append(e)
         if errors:
             raise FailedToDeleteRouteTables(errors)
-
-    def set_main_route_table_tags(self, main_route_table, reservation):
-        table_name = self.MAIN_ROUTE_TABLE_RESERVATION.format(
-            reservation.reservation_id
-        )
-        tags = self.tag_service.get_default_tags(table_name, reservation)
-        self.tag_service.set_ec2_resource_tags(main_route_table, tags)
-
-    def set_public_route_table_tags(
-        self, public_rt: "RouteTable", reservation: "ReservationModel"
-    ):
-        name = self.PUBLIC_ROUTE_TABLE_RESERVATION.format(reservation.reservation_id)
-        tags = self.tag_service.get_default_tags(name, reservation)
-        self.tag_service.set_ec2_resource_tags(public_rt, tags)
-
-    def get_active_vpcs_count(self, ec2_client, logger):
-        result = None
-
-        try:
-            result = len(ec2_client.describe_vpcs()["Vpcs"])
-
-        except Exception:
-            logger.error(f"Error querying VPCs count. Error: {traceback.format_exc()}")
-
-        return result
 
     def delete_traffic_mirror_elements(self, ec2_client, reservation_id, logger):
         tm_service = self.traffic_mirror_service
@@ -491,7 +306,7 @@ class VPCService:
         )
 
     @staticmethod
-    def get_name(vpc: "Vpc"):
+    def get_name(vpc: "Vpc") -> str:
         name = TagsHandler.from_tags_list(vpc.tags).get_name()
         if not name:
             name = vpc.vpc_id
@@ -499,5 +314,26 @@ class VPCService:
 
     @staticmethod
     def delete_all_blackhole_routes(vpc: "Vpc"):
-        for route_handler in RouteTableHandler.get_all(vpc):
+        for route_handler in RouteTableHandler.get_all_rts(vpc):
             route_handler.delete_blackhole_routes()
+
+    def get_or_create_vpc_for_reservation(
+        self,
+        reservation: "ReservationModel",
+        ec2_session: "EC2ServiceResource",
+        vpc_cidr: str,
+        logger: "Logger",
+    ) -> "Vpc":
+        rid = reservation.reservation_id
+        logger.info(f"Searching for an exiting VPC for reservation {rid}")
+        vpc = self.find_vpc_for_reservation(ec2_session, rid)
+        if not vpc:
+            logger.info(
+                f"VPC for reservation {rid} not found. Creating it with cidr {vpc_cidr}"
+            )
+            vpc = self.create_vpc_for_reservation(
+                ec2_session,
+                reservation,
+                vpc_cidr,
+            )
+        return vpc

@@ -28,7 +28,7 @@ class TestAccessKeyOperation(TestCase):
             reservation_id=reservation_id,
         )
 
-        self.assertEquals(key_data, pem_file_content)
+        self.assertEqual(key_data, pem_file_content)
         self.key_pair_service.load_key_pair_by_name.assert_called_with(
             s3_session=s3_session,
             bucket_name=aws_ec2_resource_model.key_pairs_location,

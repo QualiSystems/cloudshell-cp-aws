@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, List
 from cloudshell.cp.aws.domain.services.ec2.tags import IsolationTagValues, TypeTagValues
 
 if TYPE_CHECKING:
+    from mypy_boto3_ec2 import EC2ServiceResource
     from mypy_boto3_ec2.service_resource import SecurityGroup, Vpc
 
     from cloudshell.cp.aws.domain.services.ec2.tags import TagService
@@ -27,28 +28,15 @@ class SecurityGroupService:
             sg.delete()
         return True
 
-    def create_security_group(self, ec2_session, vpc_id, security_group_name):
-        """# noqa
-        creating a security group
-        :param ec2_session:
-        :param str vpc_id:
-        :param str security_group_name:
-        :return:
-        """
+    @staticmethod
+    def create_security_group(
+        ec2_session: "EC2ServiceResource", vpc_id: str, security_group_name: str
+    ) -> "SecurityGroup":
         return ec2_session.create_security_group(
             GroupName=security_group_name,
             Description=SecurityGroupService.CLOUDSHELL_SECURITY_GROUP_DESCRIPTION,
             VpcId=vpc_id,
         )
-
-    @staticmethod
-    def get_sandbox_security_group_names(reservation_id):
-        return [
-            SecurityGroupService.CLOUDSHELL_SANDBOX_DEFAULT_SG.format(reservation_id),
-            SecurityGroupService.CLOUDSHELL_SANDBOX_ISOLATED_FROM_SANDBOX_SG.format(
-                reservation_id
-            ),
-        ]
 
     @staticmethod
     def sandbox_default_sg_name(reservation_id):

@@ -8,9 +8,7 @@ from cloudshell.api.cloudshell_api import CloudShellAPIError
 if TYPE_CHECKING:
     from cloudshell.api.cloudshell_api import CloudShellAPISession
 
-    from cloudshell.cp.aws.domain.conncetivity.operations.prepare_subnet_executor import (  # noqa: E501
-        PrepareSubnetExecutor,
-    )
+    from cloudshell.cp.aws.domain.services.strategy.prepare_subnets import ActionItem
 
 
 class CsSubnetService:
@@ -20,7 +18,7 @@ class CsSubnetService:
 
     def patch_subnet_cidr(
         self,
-        item: "PrepareSubnetExecutor.ActionItem",
+        item: "ActionItem",
         vpc_cidr: str,
         logger: "Logger",
     ):
@@ -61,5 +59,6 @@ class CsSubnetService:
 
     @staticmethod
     def _get_alias(cidr: str) -> str:
+        """Creates alias for CS Subnet Service."""
         net = IPv4Network(cidr)
         return f"Subnet - {net.network_address}-{net.broadcast_address}"

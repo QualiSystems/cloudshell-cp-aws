@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+import attr
+
 from cloudshell.cp.core.models import CleanupNetwork
 
 from cloudshell.cp.aws.domain.services.strategy.cleanup import get_strategy
@@ -15,10 +17,10 @@ if TYPE_CHECKING:
     )
 
 
+@attr.s(auto_attribs=True)
 class CleanupSandboxInfraOperation:
-    def __init__(self, vpc_service: "VPCService", key_pair_service: "KeyPairService"):
-        self.vpc_service = vpc_service
-        self.key_pair_service = key_pair_service
+    vpc_service: "VPCService"
+    key_pair_service: "KeyPairService"
 
     def cleanup(
         self,
