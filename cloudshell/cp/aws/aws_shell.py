@@ -170,7 +170,6 @@ class AWSShell:
             subnet_service=self.subnet_service,
             elastic_ip_service=self.elastic_ip_service,
             network_interface_service=self.network_interface_service,
-            cancellation_service=self.cancellation_service,
             device_index_strategy=AllocateMissingValuesDeviceIndexStrategy(),
             vm_details_provider=self.vm_details_provider,
         )
