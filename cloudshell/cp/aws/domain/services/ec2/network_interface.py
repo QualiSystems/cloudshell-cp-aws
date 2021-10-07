@@ -35,7 +35,7 @@ class NetworkInterfaceService:
         vpc_mode: "VpcMode",
         private_ip: Optional[str] = None,
     ):
-        if vpc_mode is VpcMode.SHARED:
+        if vpc_mode in (VpcMode.SHARED, VpcMode.SINGLE):
             subnet = self.subnet_service.get_subnet_by_reservation_id(
                 vpc, reservation.reservation_id
             )
@@ -77,7 +77,7 @@ class NetworkInterfaceService:
         public_ip=None,
         private_ip=None,
     ):
-        if vpc_mode is VpcMode.SHARED:
+        if vpc_mode in (VpcMode.SHARED, VpcMode.SINGLE):
             # add SecurityGroup for the subnet
             subnet_sg = self._get_subnet_sg(subnet_id, vpc)
             groups.append(subnet_sg.id)

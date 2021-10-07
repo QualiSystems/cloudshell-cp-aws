@@ -12,6 +12,7 @@ from cloudshell.cp.core.models import (
 from cloudshell.cp.core.utils import convert_dict_to_attributes_list
 
 from cloudshell.cp.aws.common import retry_helper
+from cloudshell.cp.aws.domain.common.cancellation_service import check_if_cancelled
 from cloudshell.cp.aws.domain.common.list_helper import first_or_default
 from cloudshell.cp.aws.domain.services.ec2.security_group import SecurityGroupService
 from cloudshell.cp.aws.domain.services.ec2.tags import IsolationTagValues, TypeTagValues
@@ -19,6 +20,7 @@ from cloudshell.cp.aws.domain.services.parsers.port_group_attribute_parser impor
     PortGroupAttributeParser,
 )
 from cloudshell.cp.aws.models.ami_deployment_model import AMIDeploymentModel
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
 
 if TYPE_CHECKING:
@@ -57,7 +59,6 @@ class DeployAMIOperation:
         subnet_service,
         elastic_ip_service,
         network_interface_service: "NetworkInterfaceService",
-        cancellation_service,
         device_index_strategy: "AbstractDeviceIndexStrategy",
         vm_details_provider,
     ):
@@ -69,7 +70,6 @@ class DeployAMIOperation:
         :param KeyPairService key_pair_service: Key Pair Service
         :param SubnetService subnet_service: Subnet Service
         :param ElasticIpService elastic_ip_service: Elastic Ips Service
-        :param CommandCancellationService cancellation_service:
         :param VmDetailsProvider vm_details_provider:
         """
         self.tag_service = tag_service
@@ -79,7 +79,6 @@ class DeployAMIOperation:
         self.vpc_service = vpc_service
         self.key_pair_service = key_pair_service
         self.subnet_service = subnet_service
-        self.cancellation_service = cancellation_service
         self.elastic_ip_service = elastic_ip_service
         self.network_interface_service = network_interface_service
         self.device_index_strategy = device_index_strategy
@@ -120,18 +119,15 @@ class DeployAMIOperation:
         ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel" = (  # noqa
             ami_deploy_action.actionParams.deployment.customModel
         )
-        vpc = self.vpc_service.get_vpc(
-            ec2_session, reservation.reservation_id, aws_ec2_cp_resource_model
+        vpc = self._get_vpc(
+            ec2_session, aws_ec2_cp_resource_model, reservation.reservation_id
         )
-        if not vpc:
-            raise ValueError("VPC is not set for this reservation")
-
         key_name = self.key_pair_service.get_reservation_key_name(
             reservation_id=reservation.reservation_id
         )
         logger.info(f"Found shared sandbox key pair '{key_name}'")
 
-        self.cancellation_service.check_if_cancelled(cancellation_context)
+        check_if_cancelled(cancellation_context)
 
         instance = None
         security_group = None
@@ -147,7 +143,7 @@ class DeployAMIOperation:
                 logger=logger,
             )
 
-            self.cancellation_service.check_if_cancelled(cancellation_context)
+            check_if_cancelled(cancellation_context)
 
             ami_deployment_info = self._create_deployment_parameters(
                 ec2_session=ec2_session,
@@ -189,7 +185,7 @@ class DeployAMIOperation:
                 instance=instance, network_config_results=network_config_results
             )
 
-            self.cancellation_service.check_if_cancelled(cancellation_context)
+            check_if_cancelled(cancellation_context)
 
             self.elastic_ip_service.set_elastic_ips(
                 ec2_session=ec2_session,
@@ -201,7 +197,7 @@ class DeployAMIOperation:
                 logger=logger,
             )
 
-            self.cancellation_service.check_if_cancelled(cancellation_context)
+            check_if_cancelled(cancellation_context)
 
         except Exception as e:
             self._rollback_deploy(
@@ -256,6 +252,24 @@ class DeployAMIOperation:
         deploy_app_result.actionId = ami_deploy_action.actionId
         network_actions_results_dtos.append(deploy_app_result)
         return network_actions_results_dtos
+
+    def _get_vpc(
+        self,
+        ec2_session: "EC2ServiceResource",
+        aws_model: "AWSEc2CloudProviderResourceModel",
+        reservation_id: str,
+    ) -> "Vpc":
+        vpc = None
+        if aws_model.vpc_mode in (VpcMode.DYNAMIC, VpcMode.SINGLE):
+            vpc = self.vpc_service.find_vpc_for_reservation(ec2_session, reservation_id)
+        elif aws_model.vpc_mode is VpcMode.SHARED:
+            vpc = self.vpc_service.get_vpc_by_id(ec2_session, aws_model.shared_vpc_id)
+        elif aws_model.vpc_mode is VpcMode.SINGLE:
+            vpc = self.vpc_service.get_vpc_by_id(ec2_session, aws_model.aws_mgmt_vpc_id)
+
+        if not vpc:
+            raise ValueError("VPC is not set for this reservation")
+        return vpc
 
     def _validate_public_subnet_exist_if_requested_public_or_elastic_ips(
         self, ami_deployment_model, network_actions, logger
