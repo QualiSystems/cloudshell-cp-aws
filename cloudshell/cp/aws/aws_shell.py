@@ -566,18 +566,6 @@ class AWSShell:
 
         return self.command_result_parser.set_command_result(results)
 
-    # def remote_get_snapshots(self, context):  # noqa
-    #     with AwsShellContext(context=context, aws_session_manager=self.aws_session_manager) as shell_context:  # noqa
-    #         with ErrorHandlingContext(shell_context.logger):  # noqa
-    #             shell_context.logger.info('Get Snapshots')  # noqa
-    #
-    #             resource = context.remote_endpoints[0]  # noqa
-    #             resource_fullname = self.model_parser.get_connectd_resource_fullname(context)  # noqa
-    #             reservation_id = self._get_reservation_id(context)  # noqa
-    #
-    #             return self.snapshot_operation.get(shell_context.aws_api.ec2_client,  # noqa
-    #                                                reservation_id, resource_fullname)  # noqa
-
     def remote_get_snapshots(self, context):
         with AwsShellContext(
             context=context, aws_session_manager=self.aws_session_manager
@@ -680,11 +668,6 @@ class AWSShell:
                 )
             )
 
-            # Expected request syntax:
-            # [{  # noqa
-            #     'Key': 'string',  # noqa
-            #     'Value': 'string'  # noqa
-            # }]  # noqa
             tags = json.loads(request)
 
             instance = self.instance_service.get_instance_by_id(
@@ -782,7 +765,7 @@ class AWSShell:
         ) as shell_context:
             shell_context.logger.info("Assign additional IP Addresses")
 
-            ips = map(str.strip, new_ips.split(";"))
+            ips = list(map(str.strip, new_ips.split(";")))
             try:
                 response = shell_context.aws_api.ec2_client.assign_private_ip_addresses(
                     AllowReassignment=True,
@@ -798,5 +781,5 @@ class AWSShell:
                     ]
                 )
             except Exception:
-                shell_context.logger.error("Failed to add ips", exc_info=1)
+                shell_context.logger.error("Failed to add ips", exc_info=True)
                 return None
