@@ -11,8 +11,7 @@ from cloudshell.cp.aws.models.port_data import PortData
 class TestSecurityGroups(TestCase):
     def setUp(self):
         self.port_data = PortData("1", "2", "tcp", "0.0.0.0/0")
-        self.tag_service = Mock()
-        self.sg_service = SecurityGroupService(self.tag_service)
+        self.sg_service = SecurityGroupService()
 
     def test_get_ip_permission_object(self):
         permission_object = SecurityGroupService.get_ip_permission_object(

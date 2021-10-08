@@ -34,7 +34,6 @@ class TestSetAppSecurityGroupsOperation(TestCase):
 
         self.operation = SetAppSecurityGroupsOperation(
             instance_service=self.instance_service,
-            tag_service=self.tag_service,
             security_group_service=self.security_group_service,
         )
         self.app_models = [self._init_app_model()]

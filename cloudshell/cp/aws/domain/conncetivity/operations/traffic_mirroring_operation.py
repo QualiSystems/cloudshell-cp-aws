@@ -13,6 +13,7 @@ from cloudshell.cp.aws.domain.common.CheckCancellationThread import (
 from cloudshell.cp.aws.domain.conncetivity.operations.traffic_mirror_cleaner import (
     TrafficMirrorCleaner,
 )
+from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
 from cloudshell.cp.aws.domain.services.ec2.mirroring import TrafficMirrorService
 from cloudshell.cp.aws.models.traffic_mirror_fulfillment import (
     TrafficMirrorFulfillment,
@@ -25,7 +26,6 @@ flatten = itertools.chain.from_iterable
 class TrafficMirrorOperation:
     def __init__(
         self,
-        tag_service,
         session_number_service,
         traffic_mirror_service,
         cancellation_service,
@@ -33,10 +33,8 @@ class TrafficMirrorOperation:
         """# noqa
         :type cloudshell.cp.aws.domain.services.ec2.mirroring.TrafficMirrorService traffic_mirror_service:
         :param cloudshell.cp.aws.domain.common.cancellation_service.CommandCancellationService cancellation_service: object
-        :param cloudshell.cp.aws.domain.services.ec2.tags.TagService tag_service:
         :param cloudshell.cp.aws.domain.services.cloudshell.traffic_mirror_pool_services.SessionNumberService session_number_service:
         """
-        self._tag_service = tag_service
         self._session_number_service = session_number_service
         self._traffic_mirror_service = (
             traffic_mirror_service
@@ -139,7 +137,6 @@ class TrafficMirrorOperation:
         self._create_targets_or_assign_existing_targets(
             ec2_client,
             targets_found_nics_to_target_id,
-            self._tag_service,
             reservation,
             fulfillments,
         )
@@ -183,23 +180,21 @@ class TrafficMirrorOperation:
         self,
         ec2_client,
         nics_to_found_target_ids,
-        tag_service,
         reservation,
         fulfillments,
     ):
         """# noqa
         :param list[cloudshell.cp.aws.models.traffic_mirror_fulfillment.TrafficMirrorFulfillment] fulfillments:
-        :param cloudshell.cp.aws.domain.services.ec2.tags.TagService tag_service:
         """
         target_nics_to_fulfillments = defaultdict(list)
         [target_nics_to_fulfillments[f.target_nic_id].append(f) for f in fulfillments]
 
         for target_nic in target_nics_to_fulfillments.keys():
             if target_nic not in nics_to_found_target_ids:
-                target_tags = tag_service.get_default_tags(target_nic, reservation)
+                target_tags = TagsHandler.create_default_tags(target_nic, reservation)
                 target = (
                     self._traffic_mirror_service.create_traffic_mirror_target_from_nic(
-                        ec2_client, target_nic, target_tags
+                        ec2_client, target_nic, target_tags.aws_tags
                     )
                 )
                 self._assign_target_to_fulfillments(
@@ -220,21 +215,24 @@ class TrafficMirrorOperation:
         """# noqa
         :param cloudshell.cp.aws.models.traffic_mirror_fulfillment.TrafficMirrorFulfillment fulfillment:
         """
-        mirror_session_tags = self._tag_service.get_default_tags(
-            "session-" + fulfillment.session_name, fulfillment.reservation
+        fulfillment_name = f"session-{fulfillment.session_name}"
+        mirror_session_tags = TagsHandler.create_default_tags(
+            fulfillment_name, fulfillment.reservation
         )
 
         return self._traffic_mirror_service.create_traffic_mirror_session(
-            ec2_client, fulfillment, mirror_session_tags
+            ec2_client, fulfillment, mirror_session_tags.aws_tags
         )
 
     def _create_filter(self, ec2_client, fulfillment):
-        traffic_filter_tags = self._tag_service.get_default_tags(
-            "filter-" + fulfillment.session_name, fulfillment.reservation
+        filter_name = f"filter-{fulfillment.session_name}"
+        traffic_filter_tags = TagsHandler.create_default_tags(
+            filter_name, fulfillment.reservation
         )
-        fulfillment.traffic_mirror_filter_id = (
-            self._traffic_mirror_service.create_filter(ec2_client, traffic_filter_tags)
+        filter_id = self._traffic_mirror_service.create_filter(
+            ec2_client, traffic_filter_tags.aws_tags
         )
+        fulfillment.traffic_mirror_filter_id = filter_id
         self._traffic_mirror_service.create_filter_rules(ec2_client, fulfillment)
 
     def validate_create_actions(self, actions, request, logger):

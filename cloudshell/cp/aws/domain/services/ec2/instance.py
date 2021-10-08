@@ -1,4 +1,7 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
+
+from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
+from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 if TYPE_CHECKING:
     from logging import Logger
@@ -11,7 +14,6 @@ if TYPE_CHECKING:
     from cloudshell.cp.aws.domain.services.ec2.network_interface import (
         NetworkInterfaceService,
     )
-    from cloudshell.cp.aws.domain.services.ec2.tags import TagService
     from cloudshell.cp.aws.domain.services.waiters.instance import InstanceWaiter
     from cloudshell.cp.aws.models.ami_deployment_model import AMIDeploymentModel
 
@@ -19,12 +21,10 @@ if TYPE_CHECKING:
 class InstanceService:
     def __init__(
         self,
-        tags_creator_service: "TagService",
         instance_waiter: "InstanceWaiter",
         network_interface_service: "NetworkInterfaceService",
     ):
         self.instance_waiter = instance_waiter
-        self.tags_creator_service = tags_creator_service
         self.network_interface_service = network_interface_service
 
     def create_instance(
@@ -89,17 +89,21 @@ class InstanceService:
             instances, self.instance_waiter.TERMINATED
         )
 
-    def set_tags(self, instance, name, reservation, custom_tags):
+    def set_tags(
+        self,
+        instance: "Instance",
+        name: str,
+        reservation: "ReservationModel",
+        custom_tags: dict,
+    ):
         # todo create the name with a name generator
-        new_name = name + " " + instance.instance_id
-        default_tags = self.tags_creator_service.get_default_tags(
-            new_name, reservation
-        ) + self.tags_creator_service.get_custom_tags(custom_tags)
-
-        self.tags_creator_service.set_ec2_resource_tags(instance, default_tags)
+        new_name = f"{name} {instance.instance_id}"
+        tags = TagsHandler.create_default_tags(new_name, reservation)
+        tags.update_tags(custom_tags)
+        instance.create_tags(Tags=tags.aws_tags)
 
         for volume in instance.volumes.all():
-            self.tags_creator_service.set_ec2_resource_tags(volume, default_tags)
+            volume.create_tags(Tags=tags.aws_tags)
 
     @staticmethod
     def get_instance_by_id(ec2_session, id):  # noqa: A002
@@ -120,8 +124,15 @@ class InstanceService:
     def get_all_instances(vpc: "Vpc") -> List["Instance"]:
         return list(vpc.instances.all())
 
+    @staticmethod
+    def get_reservation_id(instance: "Instance") -> Optional[str]:
+        return TagsHandler.from_tags_list(instance.tags).get_reservation_id()
+
     def get_instances_for_reservation(
         self, vpc: "Vpc", reservation_id: str
     ) -> List["Instance"]:
-        tag = self.tags_creator_service.get_reservation_tag(reservation_id)
-        return list(filter(lambda i: tag in i.tags, self.get_all_instances(vpc)))
+        instances = filter(
+            lambda i: self.get_reservation_id(i) == reservation_id,
+            self.get_all_instances(vpc),
+        )
+        return list(instances)

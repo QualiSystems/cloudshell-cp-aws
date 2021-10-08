@@ -24,7 +24,6 @@ class TestDeployOperation(TestCase):
         self.s3_session = Mock()
         self.instance_service = Mock()
         self.security_group_service = Mock()
-        self.tag_service = Mock()
         self.key_pair = Mock()
         self.vpc_service = Mock()
         self.subnet_service = Mock()
@@ -39,7 +38,6 @@ class TestDeployOperation(TestCase):
             instance_service=self.instance_service,
             ami_credential_service=self.credentials_manager,
             security_group_service=self.security_group_service,
-            tag_service=self.tag_service,
             vpc_service=self.vpc_service,
             key_pair_service=self.key_pair,
             subnet_service=self.subnet_service,
@@ -184,14 +182,7 @@ class TestDeployOperation(TestCase):
         self.assertEqual(
             res[0].deployedAppAttributes[1].attributeValue, ami_credentials.user_name
         )
-        self.assertTrue(self.tag_service.get_security_group_tags.called)
         self.assertTrue(self.security_group_service.create_security_group.called)
-        self.assertTrue(
-            self.instance_service.set_ec2_resource_tags.called_with(
-                self.security_group_service.create_security_group()
-            ),
-            self.tag_service.get_security_group_tags(),
-        )
 
         self.assertTrue(
             self.key_pair.load.called_with(
@@ -271,14 +262,7 @@ class TestDeployOperation(TestCase):
             ami_datamodel.inbound_ports,
         )
         self.assertEqual(res[0].vmUuid, instance.instance_id)
-        self.assertTrue(self.tag_service.get_security_group_tags.called)
         self.assertTrue(self.security_group_service.create_security_group.called)
-        self.assertTrue(
-            self.instance_service.set_ec2_resource_tags.called_with(
-                self.security_group_service.create_security_group()
-            ),
-            self.tag_service.get_security_group_tags(),
-        )
 
         self.assertTrue(
             self.key_pair.load.called_with(
@@ -764,7 +748,6 @@ class TestDeployOperation(TestCase):
             self.instance_service,
             self.credentials_manager,
             self.security_group_service,
-            self.tag_service,
             my_vpc_service,
             self.key_pair,
             self.subnet_service,

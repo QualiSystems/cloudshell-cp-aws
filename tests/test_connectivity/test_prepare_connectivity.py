@@ -29,7 +29,6 @@ class TestPrepareSandboxInfra(TestCase):
         self.s3_session = Mock()
         self.aws_dm = Mock()
         self.aws_dm.vpc_mode = VpcMode.DYNAMIC
-        self.tag_service = Mock()
         self.reservation = Mock()
         self.route_table_service = Mock()
         self.cancellation_service = Mock()
@@ -42,7 +41,6 @@ class TestPrepareSandboxInfra(TestCase):
             self.vpc_serv,
             self.sg_serv,
             self.key_pair_serv,
-            self.tag_service,
             self.subnet_service,
             self.subnet_waiter,
         )
@@ -208,7 +206,6 @@ class TestPrepareSandboxInfra(TestCase):
             self.vpc_serv,
             self.sg_serv,
             key_pair_service,
-            self.tag_service,
             self.subnet_service,
             self.subnet_waiter,
         )

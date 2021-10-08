@@ -1,19 +1,18 @@
 import uuid
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
-from cloudshell.cp.aws.domain.services.ec2.tags import IsolationTagValues, TypeTagValues
+from cloudshell.cp.aws.domain.handlers.ec2 import (
+    IsolationTagValue,
+    TagsHandler,
+    TypeTagValue,
+)
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import EC2ServiceResource
     from mypy_boto3_ec2.service_resource import SecurityGroup, Vpc
 
-    from cloudshell.cp.aws.domain.services.ec2.tags import TagService
-
 
 class SecurityGroupService:
-    def __init__(self, tag_service: "TagService"):
-        self.tag_service = tag_service
-
     CLOUDSHELL_SANDBOX_DEFAULT_SG = "Cloudshell Sandbox SG {0}"
     CLOUDSHELL_SANDBOX_ISOLATED_FROM_SANDBOX_SG = "Isolated SG {0}"
     CLOUDSHELL_SANDBOX_ISOLATED_SG_STARTS = (
@@ -53,7 +52,7 @@ class SecurityGroupService:
         return cls.CLOUDSHELL_SUBNET_SECURITY_GROUP.format(subnet_id)
 
     @staticmethod
-    def get_security_group_by_name(vpc, name):
+    def get_security_group_by_name(vpc: "Vpc", name: str) -> Optional["SecurityGroup"]:
         security_groups = [
             sg for sg in list(vpc.security_groups.all()) if sg.group_name == name
         ]
@@ -66,11 +65,18 @@ class SecurityGroupService:
 
         return security_groups[0]
 
+    @staticmethod
+    def get_reservation_id(security_group: "SecurityGroup") -> Optional[str]:
+        return TagsHandler.from_tags_list(security_group.tags).get_reservation_id()
+
     def get_security_groups_by_reservation_id(
         self, vpc: "Vpc", reservation_id: str
     ) -> List["SecurityGroup"]:
-        tag = self.tag_service.get_reservation_tag(reservation_id)
-        return [sg for sg in vpc.security_groups.all() if sg.tags and tag in sg.tags]
+        return [
+            sg
+            for sg in vpc.security_groups.all()
+            if self.get_reservation_id(sg) == reservation_id
+        ]
 
     def set_shared_reservation_security_group_rules(
         self, security_group, management_sg_id, isolated_sg, need_management_sg
@@ -259,9 +265,7 @@ class SecurityGroupService:
             security_group = ec2_session.SecurityGroup(
                 security_group_description["GroupId"]
             )
-            if SecurityGroupService._is_inbound_ports_security_group(
-                self.tag_service, security_group
-            ):
+            if self._is_inbound_ports_security_group(security_group):
                 return security_group
 
         return None
@@ -281,9 +285,7 @@ class SecurityGroupService:
             security_group = ec2_session.SecurityGroup(
                 security_group_description["GroupId"]
             )
-            if SecurityGroupService._is_custom_security_group(
-                self.tag_service, security_group
-            ):
+            if self._is_custom_security_group(security_group):
                 return security_group
 
         return None
@@ -332,12 +334,13 @@ class SecurityGroupService:
 
         # add tags to the created security group that will define it as a custom
         # security group
-        default_tags = self.tag_service.get_default_tags(
-            security_group_name, reservation
+        tags = TagsHandler.create_security_group_tags(
+            security_group_name,
+            reservation,
+            IsolationTagValue.EXCLUSIVE,
+            TypeTagValue.INTERFACE,
         )
-        custom_tags = self.tag_service.get_custom_security_group_tags()
-        all_tags = default_tags + custom_tags
-        self.tag_service.set_ec2_resource_tags(custom_security_group, all_tags)
+        custom_security_group.create_tags(Tags=tags.aws_tags)
 
         # attach the custom security group to the nic
         custom_security_group_id = custom_security_group.group_id
@@ -348,25 +351,19 @@ class SecurityGroupService:
         return custom_security_group
 
     @staticmethod
-    def _is_inbound_ports_security_group(tag_service, security_group):
-        if not isinstance(security_group.tags, list):
-            return False
-        isolation_tag = tag_service.find_isolation_tag_value(security_group.tags)
-        type_tag = tag_service.find_type_tag_value(security_group.tags)
+    def _is_inbound_ports_security_group(security_group: "SecurityGroup") -> bool:
+        tags = TagsHandler.from_tags_list(security_group.tags)
         return (
-            isolation_tag == IsolationTagValues.Exclusive
-            and type_tag == TypeTagValues.InboundPorts
+            tags.get_isolation() is IsolationTagValue.EXCLUSIVE
+            and tags.get_type() is TypeTagValue.INBOUND_PORTS
         )
 
     @staticmethod
-    def _is_custom_security_group(tag_service, security_group):
-        if not isinstance(security_group.tags, list):
-            return False
-        isolation_tag = tag_service.find_isolation_tag_value(security_group.tags)
-        type_tag = tag_service.find_type_tag_value(security_group.tags)
+    def _is_custom_security_group(security_group: "SecurityGroup") -> bool:
+        tags = TagsHandler.from_tags_list(security_group.tags)
         return (
-            isolation_tag == IsolationTagValues.Exclusive
-            and type_tag == TypeTagValues.Interface
+            tags.get_isolation() is IsolationTagValue.EXCLUSIVE
+            and tags.get_type() is TypeTagValue.INTERFACE
         )
 
     def sort_sg_list(self, sg_list: List["SecurityGroup"]) -> List["SecurityGroup"]:
