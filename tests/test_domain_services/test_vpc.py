@@ -6,9 +6,7 @@ from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
 
 class TestVPCService(TestCase):
     def setUp(self):
-        self.tag_service = Mock()
         self.tags = Mock()
-        self.tag_service.get_default_tags = Mock(return_value=self.tags)
         self.subnet_service = Mock()
         self.logger = Mock()
         self.aws_ec2_datamodel = Mock()
@@ -28,7 +26,6 @@ class TestVPCService(TestCase):
         self.route_table_service = Mock()
         self.traffic_mirror_service = Mock()
         self.vpc_service = VPCService(
-            tag_service=self.tag_service,
             subnet_service=self.subnet_service,
             instance_service=self.instance_service,
             vpc_waiter=self.vpc_waiter,
@@ -65,33 +62,19 @@ class TestVPCService(TestCase):
         )
 
         self.assertTrue(self.ec2_session.create_internet_gateway.called)
-        self.tag_service.get_default_tags.assert_called_once_with(
-            f"IGW {self.reservation.reservation_id}", self.reservation
-        )
-        self.tag_service.set_ec2_resource_tags.assert_called_once_with(
-            resource=internet_gate, tags=self.tag_service.get_default_tags()
-        )
         self.assertEqual(igw.id, internet_gate.id)
 
     def test_create_vpc_for_reservation(self):
         vpc = self.vpc_service.create_vpc_for_reservation(
             self.ec2_session, self.reservation, self.cidr
         )
-        vpc_name = self.vpc_service.VPC_RESERVATION.format(
-            self.reservation.reservation_id
-        )
+        self.vpc_service.VPC_RESERVATION.format(self.reservation.reservation_id)
 
         self.vpc_waiter.wait.assert_called_once_with(
             vpc=vpc, state=self.vpc_waiter.AVAILABLE
         )
         self.assertEqual(self.vpc, vpc)
         self.ec2_session.create_vpc.assert_called_once_with(CidrBlock=self.cidr)
-        self.tag_service.get_default_tags.assert_called_once_with(
-            vpc_name, self.reservation
-        )
-        self.tag_service.set_ec2_resource_tags.assert_called_once_with(
-            self.vpc, self.tags
-        )
 
     def test_find_vpc_for_reservation(self):
         self.ec2_session.vpcs = Mock()

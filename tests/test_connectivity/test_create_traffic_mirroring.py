@@ -22,13 +22,11 @@ from cloudshell.cp.aws.domain.services.cloudshell.traffic_mirror_pool_services i
     SessionNumberService,
 )
 from cloudshell.cp.aws.domain.services.ec2.mirroring import TrafficMirrorService
-from cloudshell.cp.aws.domain.services.ec2.tags import TagService
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
 class TestCreateTrafficMirroring(TestCase):
     def test_valid_create_returns_success_actions(self):
-        tag_service = TagService()
         session_number_service = SessionNumberService()
         traffic_mirror_service = TrafficMirrorService()
         cancellation_service = CommandCancellationService()
@@ -87,7 +85,6 @@ class TestCreateTrafficMirroring(TestCase):
         actions = [action]
 
         op = TrafficMirrorOperation(
-            tag_service,
             session_number_service,
             traffic_mirror_service,
             cancellation_service,

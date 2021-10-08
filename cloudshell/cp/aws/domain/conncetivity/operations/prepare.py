@@ -36,7 +36,6 @@ if TYPE_CHECKING:
         SecurityGroupService,
     )
     from cloudshell.cp.aws.domain.services.ec2.subnet import SubnetService
-    from cloudshell.cp.aws.domain.services.ec2.tags import TagService
     from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
     from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
     from cloudshell.cp.aws.models.aws_api import AwsApiClients
@@ -51,7 +50,6 @@ class PrepareSandboxInfraOperation:
     vpc_service: "VPCService"
     security_group_service: "SecurityGroupService"
     key_pair_service: "KeyPairService"
-    tag_service: "TagService"
     subnet_service: "SubnetService"
     subnet_waiter: "SubnetWaiter"
 
@@ -153,7 +151,6 @@ class PrepareSandboxInfraOperation:
         strategy = get_prepare_infra_strategy(
             self.vpc_service,
             self.security_group_service,
-            self.tag_service,
             aws_clients,
             aws_model,
             reservation,

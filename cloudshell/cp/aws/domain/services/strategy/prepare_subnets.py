@@ -176,7 +176,7 @@ class PrepareSubnetsAbsStrategy(metaclass=ABCMeta):
         subnet_name = get_subnet_reservation_name(
             alias, self._reservation.reservation_id
         )
-        tags = TagsHandler.create_default(subnet_name, self._reservation)
+        tags = TagsHandler.create_default_tags(subnet_name, self._reservation)
         tags.set_is_public_tag(item.action.actionParams.isPublic)
         item.subnet.create_tags(Tags=tags.aws_tags)
 
@@ -330,7 +330,7 @@ class PrepareSubnetsSharedStrategy(PrepareSubnetsAbsStrategy):
             sg = self._sg_service.create_security_group(
                 self._aws_clients.ec2_session, self.vpc.vpc_id, sg_name
             )
-            tags = TagsHandler.create_default(sg_name, self._reservation)
+            tags = TagsHandler.create_default_tags(sg_name, self._reservation)
             sg.create_tags(Tags=tags.aws_tags)
             self._sg_service.set_subnet_sg_rules(sg)
 
@@ -372,7 +372,7 @@ class PrepareSubnetsSingleStrategy(PrepareSubnetsAbsStrategy):
             sg = self._sg_service.create_security_group(
                 self._aws_clients.ec2_session, self.vpc.vpc_id, sg_name
             )
-            tags = TagsHandler.create_default(sg_name, self._reservation)
+            tags = TagsHandler.create_default_tags(sg_name, self._reservation)
             sg.create_tags(Tags=tags.aws_tags)
             self._sg_service.set_subnet_sg_rules(sg)
 

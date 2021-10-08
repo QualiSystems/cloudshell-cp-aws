@@ -13,9 +13,8 @@ class TestSubnetService(TestCase):
         self.availability_zone = "a1"
         self.vpc_name = "name"
         self.reservation_id = "res"
-        self.tag_srv = Mock()
         self.subnet_waiter = Mock()
-        self.subnet_srv = SubnetService(self.tag_srv, self.subnet_waiter)
+        self.subnet_srv = SubnetService(self.subnet_waiter)
 
     def test_delete_subnet(self):
         subnet = Mock()

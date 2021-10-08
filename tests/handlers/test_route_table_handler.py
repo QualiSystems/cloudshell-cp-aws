@@ -36,7 +36,7 @@ def test_get_public_rt_is_missed(vpc, reservation):
 
 def test_get_public_rt(vpc, reservation):
     rt_name = get_public_rt_name(reservation.reservation_id)
-    tags = TagsHandler.create_default(rt_name, reservation)
+    tags = TagsHandler.create_default_tags(rt_name, reservation)
     aws_rt = RouteTableTest(tags=tags.aws_tags)
     vpc._rts.append(aws_rt)
 
@@ -48,7 +48,7 @@ def test_get_public_rt(vpc, reservation):
 
 def test_get_private_rt(vpc, reservation):
     rt_name = get_private_rt_name(reservation.reservation_id)
-    tags = TagsHandler.create_default(rt_name, reservation)
+    tags = TagsHandler.create_default_tags(rt_name, reservation)
     aws_rt = RouteTableTest(tags=tags.aws_tags)
     vpc._rts.append(aws_rt)
 

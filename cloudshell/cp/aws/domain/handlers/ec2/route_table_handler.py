@@ -79,7 +79,7 @@ class RouteTableHandler:
     def create_rt(
         cls, vpc: "Vpc", reservation: "ReservationModel", rt_name: str
     ) -> "RouteTableHandler":
-        tags = TagsHandler.create_default(rt_name, reservation)
+        tags = TagsHandler.create_default_tags(rt_name, reservation)
         rt = cls(vpc.create_route_table())
         rt.add_tags(tags)
         return rt
@@ -149,7 +149,7 @@ class RouteTableHandler:
             raise MainRouteTableNotFound(vpc)
 
         rt_name = get_main_rt_name(reservation.reservation_id)
-        tags = TagsHandler.create_default(rt_name, reservation)
+        tags = TagsHandler.create_default_tags(rt_name, reservation)
         rt.add_tags(tags)
         return rt
 

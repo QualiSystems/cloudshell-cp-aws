@@ -6,19 +6,22 @@ from botocore.exceptions import ClientError
 from cloudshell.cp.aws.domain.ami_management.operations.delete_operation import (
     DeleteAMIOperation,
 )
+from cloudshell.cp.aws.domain.handlers.ec2 import (
+    IsolationTagValue,
+    TagsHandler,
+    TypeTagValue,
+)
 
 
 class TestDeleteOperation(TestCase):
     def setUp(self):
         self.ec2_session = Mock()
-        self.tag_service = Mock()
         self.security_group_service = Mock()
         self.elastic_ip_service = Mock()
         self.delete_operation = DeleteAMIOperation(
             Mock(),
             Mock(),
             self.security_group_service,
-            self.tag_service,
             self.elastic_ip_service,
         )
         self.instance = Mock()
@@ -55,15 +58,18 @@ class TestDeleteOperation(TestCase):
         # arrange
         sg_desc = {"GroupId": "sg_id"}
         self.instance.security_groups = [sg_desc]
+        reservation = Mock()
+        tags = TagsHandler.create_security_group_tags(
+            "sg name", reservation, IsolationTagValue.EXCLUSIVE, TypeTagValue.DEFAULT
+        )
         sg = Mock()
+        sg.tags = tags.aws_tags
         self.ec2_session.SecurityGroup = Mock(return_value=sg)
-        self.tag_service.find_isolation_tag_value = Mock(return_value="Exclusive")
 
         # act
         self.delete_operation.delete_instance(self.logger, self.ec2_session, "id")
 
         # assert
-        self.assertTrue(self.tag_service.find_isolation_tag_value.called)
         self.security_group_service.delete_security_group.assert_called_with(sg)
 
     def test_delete_operation_instance_not_exist(self):

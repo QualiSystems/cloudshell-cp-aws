@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, List, Optional
 
-from cloudshell.cp.aws.domain.services.ec2.tags import TagService
+from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
 from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
 
 if TYPE_CHECKING:
@@ -12,8 +12,7 @@ def get_subnet_reservation_name(subnet_alias: str, reservation_id: str) -> str:
 
 
 class SubnetService:
-    def __init__(self, tag_service: TagService, subnet_waiter: SubnetWaiter):
-        self.tag_service = tag_service
+    def __init__(self, subnet_waiter: SubnetWaiter):
         self.subnet_waiter = subnet_waiter
 
     def create_subnet_nowait(
@@ -35,9 +34,8 @@ class SubnetService:
         return subnets[0]
 
     def get_subnet_by_reservation_id(self, vpc: "Vpc", rid: str) -> "Subnet":
-        reservation_tag = self.tag_service.get_reservation_tag(rid)
         for subnet in self.get_vpc_subnets(vpc):
-            if reservation_tag in subnet.tags:
+            if TagsHandler.from_tags_list(subnet.tags).get_reservation_id() == rid:
                 return subnet
         raise Exception(f"There isn't the subnet for the reservation '{rid}'")
 
