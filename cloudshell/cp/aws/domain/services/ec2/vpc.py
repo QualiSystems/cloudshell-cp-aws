@@ -34,7 +34,6 @@ class VPCService:
 
     def __init__(
         self,
-        tag_service,
         subnet_service,
         instance_service,
         vpc_waiter,
@@ -43,8 +42,6 @@ class VPCService:
         traffic_mirror_service,
     ):
         """# noqa
-        :param tag_service: Tag Service
-        :type tag_service: cloudshell.cp.aws.domain.services.ec2.tags.TagService
         :param subnet_service: Subnet Service
         :type subnet_service: cloudshell.cp.aws.domain.services.ec2.subnet.SubnetService
         :param instance_service: Instance Service
@@ -56,7 +53,6 @@ class VPCService:
         :param sg_service: Security Group Service
         :type sg_service: cloudshell.cp.aws.domain.services.ec2.security_group.SecurityGroupService
         """
-        self.tag_service = tag_service
         self.subnet_service = subnet_service
         self.instance_service = instance_service
         self.vpc_waiter = vpc_waiter
@@ -107,9 +103,10 @@ class VPCService:
     def get_vpc_by_id(ec2_session: "EC2ServiceResource", vpc_id: str) -> "Vpc":
         return ec2_session.Vpc(vpc_id)
 
-    def _set_tags(self, vpc_name, reservation, vpc):
-        tags = self.tag_service.get_default_tags(vpc_name, reservation)
-        self.tag_service.set_ec2_resource_tags(vpc, tags)
+    @staticmethod
+    def _set_tags(vpc_name: str, reservation: "ReservationModel", vpc: "Vpc"):
+        tags = TagsHandler.create_default_tags(vpc_name, reservation)
+        vpc.create_tags(Tags=tags.aws_tags)
 
     def remove_all_internet_gateways(self, vpc: "Vpc"):
         """Removes all internet gateways from a VPC."""
@@ -133,10 +130,11 @@ class VPCService:
         reservation: "ReservationModel",
     ) -> "InternetGateway":
         igw = ec2_session.create_internet_gateway()
-        tags = self.tag_service.get_default_tags(
-            f"IGW {reservation.reservation_id}", reservation
-        )
-        self.tag_service.set_ec2_resource_tags(resource=igw, tags=tags)
+
+        igw_name = f"IGW {reservation.reservation_id}"
+        tags = TagsHandler.create_default_tags(igw_name, reservation)
+        igw.create_tags(Tags=tags.aws_tags)
+
         vpc.attach_internet_gateway(InternetGatewayId=igw.id)
         return igw
 

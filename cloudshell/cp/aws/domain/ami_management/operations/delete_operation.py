@@ -1,6 +1,6 @@
 from botocore.exceptions import ClientError
 
-from cloudshell.cp.aws.domain.services.ec2.tags import IsolationTagValues
+from cloudshell.cp.aws.domain.handlers.ec2 import IsolationTagValue, TagsHandler
 
 
 class DeleteAMIOperation:
@@ -9,7 +9,6 @@ class DeleteAMIOperation:
         instance_service,
         ec2_storage_service,
         security_group_service,
-        tag_service,
         elastic_ip_service,
     ):
         """# noqa
@@ -19,14 +18,11 @@ class DeleteAMIOperation:
         :type ec2_storage_service: cloudshell.cp.aws.domain.services.ec2.ebs.EC2StorageService
         :param security_group_service:
         :type security_group_service: cloudshell.cp.aws.domain.services.ec2.security_group.SecurityGroupService
-        :param tag_service:
-        :type tag_service: cloudshell.cp.aws.domain.services.ec2.tags.TagService
         :param ElasticIpService elastic_ip_service:
         """
         self.instance_service = instance_service
         self.ec2_storage_service = ec2_storage_service
         self.security_group_service = security_group_service
-        self.tag_service = tag_service
         self.elastic_ip_service = elastic_ip_service
 
     def delete_instance(self, logger, ec2_session, instance_id):
@@ -86,10 +82,8 @@ class DeleteAMIOperation:
         if security_groups_description:
             for sg_description in security_groups_description:
                 security_group = ec2_session.SecurityGroup(sg_description["GroupId"])
-                isolation = self.tag_service.find_isolation_tag_value(
-                    security_group.tags
-                )
-                if isolation == IsolationTagValues.Exclusive:
+                tags = TagsHandler.from_tags_list(security_group.tags)
+                if tags.get_isolation() is IsolationTagValue.EXCLUSIVE:
                     self.security_group_service.delete_security_group(security_group)
 
         return True

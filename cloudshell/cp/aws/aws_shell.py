@@ -49,6 +49,7 @@ from cloudshell.cp.aws.domain.deployed_app.operations.set_app_security_groups im
 from cloudshell.cp.aws.domain.deployed_app.operations.vm_details_operation import (
     VmDetailsOperation,
 )
+from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
 from cloudshell.cp.aws.domain.operations.autoload_operation import AutoloadOperation
 from cloudshell.cp.aws.domain.services.cloudshell.cs_subnet_service import (
     CsSubnetService,
@@ -69,7 +70,6 @@ from cloudshell.cp.aws.domain.services.ec2.network_interface import (
 )
 from cloudshell.cp.aws.domain.services.ec2.security_group import SecurityGroupService
 from cloudshell.cp.aws.domain.services.ec2.subnet import SubnetService
-from cloudshell.cp.aws.domain.services.ec2.tags import TagService
 from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
 from cloudshell.cp.aws.domain.services.parsers.aws_model_parser import AWSModelsParser
 from cloudshell.cp.aws.domain.services.parsers.command_results_parser import (
@@ -112,7 +112,6 @@ class AWSShell:
         self.image_waiter = AMIWaiter()
         self.command_result_parser = CommandResultsParser()
         self.cancellation_service = CommandCancellationService()
-        self.tag_service = TagService()
         self.ec2_instance_waiter = InstanceWaiter(
             cancellation_service=self.cancellation_service
         )
@@ -122,9 +121,9 @@ class AWSShell:
         self.password_waiter = PasswordWaiter(self.cancellation_service)
         self.vm_custom_params_extractor = VmCustomParamsExtractor()
         self.ami_credentials_service = InstanceCredentialsService(self.password_waiter)
-        self.security_group_service = SecurityGroupService(self.tag_service)
+        self.security_group_service = SecurityGroupService()
         self.subnet_waiter = SubnetWaiter()
-        self.subnet_service = SubnetService(self.tag_service, self.subnet_waiter)
+        self.subnet_service = SubnetService(self.subnet_waiter)
         self.s3_service = S3BucketService()
         self.vpc_peering_waiter = VpcPeeringConnectionWaiter()
         self.key_pair_service = KeyPairService(self.s3_service)
@@ -134,7 +133,7 @@ class AWSShell:
             security_group_service=self.security_group_service,
         )
         self.instance_service = InstanceService(
-            self.tag_service, self.ec2_instance_waiter, self.network_interface_service
+            self.ec2_instance_waiter, self.network_interface_service
         )
         self.elastic_ip_service = ElasticIpService()
         self.vm_details_provider = VmDetailsProvider()
@@ -143,7 +142,6 @@ class AWSShell:
         self.request_parser = DriverRequestParser()
 
         self.vpc_service = VPCService(
-            tag_service=self.tag_service,
             subnet_service=self.subnet_service,
             instance_service=self.instance_service,
             vpc_waiter=self.vpc_waiter,
@@ -155,7 +153,6 @@ class AWSShell:
             vpc_service=self.vpc_service,
             security_group_service=self.security_group_service,
             key_pair_service=self.key_pair_service,
-            tag_service=self.tag_service,
             subnet_service=self.subnet_service,
             subnet_waiter=self.subnet_waiter,
         )
@@ -164,7 +161,6 @@ class AWSShell:
             instance_service=self.instance_service,
             ami_credential_service=self.ami_credentials_service,
             security_group_service=self.security_group_service,
-            tag_service=self.tag_service,
             vpc_service=self.vpc_service,
             key_pair_service=self.key_pair_service,
             subnet_service=self.subnet_service,
@@ -187,7 +183,6 @@ class AWSShell:
             instance_service=self.instance_service,
             ec2_storage_service=self.ec2_storage_service,
             security_group_service=self.security_group_service,
-            tag_service=self.tag_service,
             elastic_ip_service=self.elastic_ip_service,
         )
 
@@ -208,7 +203,6 @@ class AWSShell:
 
         self.set_app_security_groups_operation = SetAppSecurityGroupsOperation(
             instance_service=self.instance_service,
-            tag_service=self.tag_service,
             security_group_service=self.security_group_service,
         )
 
@@ -224,7 +218,6 @@ class AWSShell:
         )
 
         self.traffic_mirroring_operation = TrafficMirrorOperation(
-            tag_service=self.tag_service,
             session_number_service=self.session_number_service,
             traffic_mirror_service=self.traffic_mirror_service,
             cancellation_service=self.cancellation_service,
@@ -587,7 +580,7 @@ class AWSShell:
             shell_context.logger.info("Save Snapshot")
             resource = context.remote_endpoints[0]
             reservation = ReservationModel(context.remote_reservation)
-            tags = self.tag_service.get_default_tags(snapshot_name, reservation)
+            tags = TagsHandler.create_default_tags(snapshot_name, reservation)
             data_holder = self.model_parser.convert_app_resource_to_deployed_app(
                 resource
             )
@@ -596,7 +589,7 @@ class AWSShell:
                 ec2_session=shell_context.aws_api.ec2_session,
                 instance_id=data_holder.vmdetails.uid,
                 snapshot_name=snapshot_name,
-                tags=tags,
+                tags=tags.aws_tags,
             )
 
     def remote_restore_snapshot(self, context, snapshot_name):
@@ -606,7 +599,7 @@ class AWSShell:
             shell_context.logger.info("Save Snapshot")
             resource = context.remote_endpoints[0]
             reservation = ReservationModel(context.remote_reservation)
-            tags = self.tag_service.get_default_tags(snapshot_name, reservation)
+            tags = TagsHandler.create_default_tags(snapshot_name, reservation)
             data_holder = self.model_parser.convert_app_resource_to_deployed_app(
                 resource
             )
@@ -615,7 +608,7 @@ class AWSShell:
                 ec2_session=shell_context.aws_api.ec2_session,
                 instance_id=data_holder.vmdetails.uid,
                 snapshot_name=snapshot_name,
-                tags=tags,
+                tags=tags.aws_tags,
             )
 
     def save_app(self, context, cancellation_context):

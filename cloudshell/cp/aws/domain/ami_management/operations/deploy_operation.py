@@ -14,8 +14,12 @@ from cloudshell.cp.core.utils import convert_dict_to_attributes_list
 from cloudshell.cp.aws.common import retry_helper
 from cloudshell.cp.aws.domain.common.cancellation_service import check_if_cancelled
 from cloudshell.cp.aws.domain.common.list_helper import first_or_default
+from cloudshell.cp.aws.domain.handlers.ec2 import (
+    IsolationTagValue,
+    TagsHandler,
+    TypeTagValue,
+)
 from cloudshell.cp.aws.domain.services.ec2.security_group import SecurityGroupService
-from cloudshell.cp.aws.domain.services.ec2.tags import IsolationTagValues, TypeTagValues
 from cloudshell.cp.aws.domain.services.parsers.port_group_attribute_parser import (
     PortGroupAttributeParser,
 )
@@ -53,7 +57,6 @@ class DeployAMIOperation:
         instance_service,
         ami_credential_service,
         security_group_service,
-        tag_service,
         vpc_service: "VPCService",
         key_pair_service,
         subnet_service,
@@ -66,13 +69,11 @@ class DeployAMIOperation:
         :param cloudshell.cp.aws.domain.services.ec2.instance.InstanceService instance_service: Instance Service
         :param InstanceCredentialsService ami_credential_service: AMI Credential Service
         :param SecurityGroupService security_group_service: Security Group Service
-        :param TagService tag_service: Tag service
         :param KeyPairService key_pair_service: Key Pair Service
         :param SubnetService subnet_service: Subnet Service
         :param ElasticIpService elastic_ip_service: Elastic Ips Service
         :param VmDetailsProvider vm_details_provider:
         """
-        self.tag_service = tag_service
         self.instance_service = instance_service
         self.security_group_service = security_group_service
         self.credentials_service = ami_credential_service
@@ -483,14 +484,13 @@ class DeployAMIOperation:
             security_group_name=security_group_name,
         )
 
-        tags = self.tag_service.get_security_group_tags(
-            name=security_group_name,
-            isolation=IsolationTagValues.Exclusive,
-            reservation=reservation,
-            type=TypeTagValues.InboundPorts,
+        tags = TagsHandler.create_security_group_tags(
+            security_group_name,
+            reservation,
+            IsolationTagValue.EXCLUSIVE,
+            TypeTagValue.INBOUND_PORTS,
         )
-
-        self.tag_service.set_ec2_resource_tags(security_group, tags)
+        security_group.create_tags(Tags=tags.aws_tags)
 
         self.security_group_service.set_security_group_rules(
             security_group=security_group,

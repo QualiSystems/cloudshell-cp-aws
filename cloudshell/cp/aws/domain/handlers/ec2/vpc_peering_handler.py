@@ -145,7 +145,7 @@ class VpcPeeringHandler:
         inst.wait_until_status(Status.ACTIVE)
 
         connection_name = get_connection_name(reservation.reservation_id)
-        tags = TagsHandler.create_default(connection_name, reservation)
+        tags = TagsHandler.create_default_tags(connection_name, reservation)
         inst.add_tags(tags)
 
         return inst

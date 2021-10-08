@@ -4,16 +4,14 @@ from cloudshell.cp.core.models import SetAppSecurityGroupActionResult
 
 
 class SetAppSecurityGroupsOperation:
-    def __init__(self, instance_service, tag_service, security_group_service):
+    def __init__(self, instance_service, security_group_service):
         """# noqa
         :param InstanceService instance_service:
-        :param TagService tag_service:
         :type instance_service: cloudshell.cp.aws.domain.services.ec2.instance.InstanceService
         :param security_group_service:
         :type security_group_service: cloudshell.cp.aws.domain.services.ec2.security_group.SecurityGroupService
         :return:
         """
-        self.tag_service = tag_service
         self.instance_service = instance_service
         self.security_group_service = security_group_service
 

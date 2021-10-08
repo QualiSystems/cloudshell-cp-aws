@@ -7,7 +7,12 @@ from cloudshell.cp.core.models import PrepareCloudInfraResult
 
 from cloudshell.cp.aws.common.cached_property import cached_property
 from cloudshell.cp.aws.domain.common.cancellation_service import check_if_cancelled
-from cloudshell.cp.aws.domain.handlers.ec2 import RouteTableHandler
+from cloudshell.cp.aws.domain.handlers.ec2 import (
+    IsolationTagValue,
+    RouteTableHandler,
+    TagsHandler,
+    TypeTagValue,
+)
 from cloudshell.cp.aws.domain.handlers.ec2.vpc_peering_handler import (
     VpcPeeringConnectionNotFoundForReservation,
     VpcPeeringHandler,
@@ -29,7 +34,6 @@ if TYPE_CHECKING:
     from cloudshell.cp.aws.domain.services.ec2.security_group import (
         SecurityGroupService,
     )
-    from cloudshell.cp.aws.domain.services.ec2.tags import TagService
     from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
     from cloudshell.cp.aws.models.aws_api import AwsApiClients
     from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
@@ -42,7 +46,6 @@ if TYPE_CHECKING:
 class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
     _vpc_service: "VPCService"
     _security_group_service: "SecurityGroupService"
-    _tag_service: "TagService"
     _aws_clients: "AwsApiClients"
     _aws_model: "AWSEc2CloudProviderResourceModel"
     _reservation: "ReservationModel"
@@ -132,10 +135,13 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
             sg = self._security_group_service.create_security_group(
                 self._aws_clients.ec2_session, self.vpc.id, sg_name
             )
-            tags = self._tag_service.get_sandbox_isolated_security_group_tags(
-                sg_name, self._reservation
+            tags = TagsHandler.create_security_group_tags(
+                sg_name,
+                self._reservation,
+                IsolationTagValue.SHARED,
+                TypeTagValue.ISOLATED,
             )
-            self._tag_service.set_ec2_resource_tags(sg, tags)
+            sg.create_tags(Tags=tags.aws_tags)
         return sg
 
     def create_default_sg(self) -> "SecurityGroup":
@@ -147,10 +153,13 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
             sg = self._security_group_service.create_security_group(
                 self._aws_clients.ec2_session, self.vpc.id, sg_name
             )
-            tags = self._tag_service.get_sandbox_default_security_group_tags(
-                sg_name, self._reservation
+            tags = TagsHandler.create_security_group_tags(
+                sg_name,
+                self._reservation,
+                IsolationTagValue.SHARED,
+                TypeTagValue.DEFAULT,
             )
-            self._tag_service.set_ec2_resource_tags(sg, tags)
+            sg.create_tags(Tags=tags.aws_tags)
         return sg
 
     @abstractmethod
@@ -370,7 +379,6 @@ STRATEGIES = {
 def get_prepare_infra_strategy(
     vpc_service: "VPCService",
     security_group_service: "SecurityGroupService",
-    tag_service: "TagService",
     aws_clients: "AwsApiClients",
     aws_model: "AWSEc2CloudProviderResourceModel",
     reservation: "ReservationModel",
@@ -382,7 +390,6 @@ def get_prepare_infra_strategy(
     return STRATEGIES[aws_model.vpc_mode](  # pycharm fails to get correct params
         vpc_service,
         security_group_service,
-        tag_service,
         aws_clients,
         aws_model,
         reservation,
