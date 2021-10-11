@@ -282,13 +282,13 @@ class PrepareCloudInfraStaticStrategy(PrepareCloudInfraAbsStrategy):
 
     def set_sg_rules(self, isolated_sg: "SecurityGroup", default_sg: "SecurityGroup"):
         self._security_group_service.set_isolated_security_group_rules(
-            isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=True
+            isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=False
         )
         self._security_group_service.set_shared_reservation_security_group_rules(
             security_group=default_sg,
             management_sg_id=self._aws_model.aws_mgmt_sg_id,
             isolated_sg=isolated_sg,
-            need_management_sg=True,
+            need_management_sg=False,
         )
 
 
@@ -323,13 +323,13 @@ class PrepareCloudInfraSharedStrategy(PrepareCloudInfraAbsStrategy):
 
     def set_sg_rules(self, isolated_sg: "SecurityGroup", default_sg: "SecurityGroup"):
         self._security_group_service.set_isolated_security_group_rules(
-            isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=True
+            isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=False
         )
         self._security_group_service.set_shared_reservation_security_group_rules(
             security_group=default_sg,
             management_sg_id=self._aws_model.aws_mgmt_sg_id,
             isolated_sg=isolated_sg,
-            need_management_sg=True,
+            need_management_sg=False,
         )
 
         inbound_ports = [
@@ -363,13 +363,13 @@ class PrepareCloudInfraSingleStrategy(PrepareCloudInfraAbsStrategy):
 
     def set_sg_rules(self, isolated_sg: "SecurityGroup", default_sg: "SecurityGroup"):
         self._security_group_service.set_isolated_security_group_rules(
-            isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=True
+            isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=False
         )
         self._security_group_service.set_shared_reservation_security_group_rules(
             security_group=default_sg,
             management_sg_id=self._aws_model.aws_mgmt_sg_id,
             isolated_sg=isolated_sg,
-            need_management_sg=True,
+            need_management_sg=False,
         )
 
         inbound_ports = [

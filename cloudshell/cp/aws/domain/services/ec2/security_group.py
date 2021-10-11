@@ -1,6 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING, List, Optional
 
+from botocore.exceptions import ClientError
 from retrying import retry
 
 from cloudshell.cp.aws.domain.handlers.ec2 import (
@@ -52,6 +53,16 @@ class SecurityGroupService:
     @classmethod
     def subnet_sg_name(cls, subnet_id: str) -> str:
         return cls.CLOUDSHELL_SUBNET_SECURITY_GROUP.format(subnet_id)
+
+    @staticmethod
+    def _set_rules(security_group: "SecurityGroup", ip_permissions: list):
+        try:
+            security_group.authorize_ingress(IpPermissions=ip_permissions)
+        except ClientError as e:
+            if "InvalidPermission.Duplicate" in str(e):
+                pass
+            else:
+                raise
 
     @staticmethod
     def get_security_group_by_name(vpc: "Vpc", name: str) -> Optional["SecurityGroup"]:
@@ -126,7 +137,7 @@ class SecurityGroupService:
         if need_management_sg:
             ip_permissions.append(management_rule)
 
-        security_group.authorize_ingress(IpPermissions=ip_permissions)
+        self._set_rules(security_group, ip_permissions)
 
     def set_isolated_security_group_rules(
         self, security_group, management_sg_id, need_management_access
@@ -162,10 +173,9 @@ class SecurityGroupService:
                     "UserIdGroupPairs": [{"GroupId": management_sg_id}],
                 }
             ]
-            security_group.authorize_ingress(IpPermissions=ip_permissions)
+            self._set_rules(security_group, ip_permissions)
 
-    @staticmethod
-    def set_subnet_sg_rules(security_group):
+    def set_subnet_sg_rules(self, security_group):
         rule = {
             "IpProtocol": "-1",
             "FromPort": -1,
@@ -174,7 +184,7 @@ class SecurityGroupService:
                 {"GroupId": security_group.id},
             ],
         }
-        security_group.authorize_ingress(IpPermissions=[rule])
+        self._set_rules(security_group, [rule])
 
     def set_security_group_rules(
         self, security_group, inbound_ports=None, outbound_ports=None, logger=None
@@ -222,7 +232,7 @@ class SecurityGroupService:
                 for port in inbound_ports
                 if port is not None
             ]
-            security_group.authorize_ingress(IpPermissions=ip_permissions)
+            self._set_rules(security_group, ip_permissions)
 
     def remove_all_inbound_rules(self, security_group):
         rules = security_group.ip_permissions
