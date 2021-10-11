@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Generator, Optional
 import attr
 from retrying import retry
 
+from cloudshell.cp.aws.common.cached_property import cached_property, invalidated_cache
 from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
 
 if TYPE_CHECKING:
@@ -115,7 +116,7 @@ class VpcPeeringHandler:
         cls, vpc: "Vpc"
     ) -> Generator["VpcPeeringHandler", None, None]:
         for peering in map(cls, vpc.accepted_vpc_peering_connections.all()):
-            if peering.is_failed:
+            if not peering.is_failed:
                 yield peering
 
     @classmethod
@@ -146,7 +147,7 @@ class VpcPeeringHandler:
 
         connection_name = get_connection_name(reservation.reservation_id)
         tags = TagsHandler.create_default_tags(connection_name, reservation)
-        inst.add_tags(tags)
+        inst.add_tags(ec2_session, tags)
 
         return inst
 
@@ -167,6 +168,18 @@ class VpcPeeringHandler:
     @property  # noqa: A003
     def id(self) -> str:
         return self._vpc_peering.id
+
+    @cached_property
+    def tags(self) -> "TagsHandler":
+        self.update()
+        return TagsHandler.from_tags_list(self._vpc_peering.tags)
+
+    @property
+    def name(self) -> str:
+        return self.tags.get_name()
+
+    def _update_tags(self):
+        invalidated_cache(self, "tags")
 
     def delete(self):
         self._vpc_peering.delete()
@@ -202,3 +215,4 @@ class VpcPeeringHandler:
     @retry(stop_max_attempt_number=30, wait_fixed=1000)
     def add_tags(self, ec2_session: "EC2ServiceResource", tags: TagsHandler):
         ec2_session.create_tags(Resources=(self._vpc_peering.id,), Tags=tags.aws_tags)
+        self._update_tags()
