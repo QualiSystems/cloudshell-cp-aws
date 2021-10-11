@@ -90,7 +90,7 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
         return self._vpc_service.get_name(self.vpc)
 
     def enable_dns_hostnames(self, vpc: "Vpc"):
-        self._logger.info(f"Enable dns for the VPC {self.vpc_name}")
+        self._logger.info(f"Enable dns for the VPC '{self.vpc_name}'")
         self._vpc_service.modify_vpc_attribute(
             self._aws_clients.ec2_client, self.vpc.vpc_id, enable_dns_hostnames=True
         )

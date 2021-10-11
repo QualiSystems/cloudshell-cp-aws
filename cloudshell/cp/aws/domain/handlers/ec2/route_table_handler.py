@@ -161,9 +161,10 @@ class RouteTableHandler:
 
     @cached_property
     def tags(self) -> "TagsHandler":
+        self._aws_rt.load()
         return TagsHandler.from_tags_list(self._aws_rt.tags)
 
-    @cached_property
+    @property
     def name(self) -> str:
         return self.tags.get_name()
 
@@ -185,6 +186,9 @@ class RouteTableHandler:
     def _update_routes(self):
         invalidated_cache(self, "routes")
 
+    def _update_tags(self):
+        invalidated_cache(self, "tags")
+
     def delete_blackhole_routes(self) -> bool:
         is_blackhole_list = [route.delete_if_blackhole() for route in self.routes]
         is_any_deleted = any(is_blackhole_list)
@@ -197,6 +201,7 @@ class RouteTableHandler:
 
     def add_tags(self, tags: "TagsHandler"):
         self._aws_rt.create_tags(Tags=tags.aws_tags)
+        self._update_tags()
 
     def find_route_to_gateway(
         self, gateway_id: str, dst_cidr: str
