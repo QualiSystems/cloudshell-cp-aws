@@ -21,6 +21,9 @@ class RouteTableTest:
     def create_tags(self, *, Tags):
         self.tags.extend(Tags)
 
+    def load(self):
+        ...
+
 
 @attr.s(auto_attribs=True)
 class VpcTest:

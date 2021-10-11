@@ -38,7 +38,9 @@ class CleanupSandboxInfraAbsStrategy(metaclass=ABCMeta):
     _aws_model: "AWSEc2CloudProviderResourceModel"
     _reservation_id: "str"
     _logger: "Logger"
-    _cleanup_exceptions: List[Exception] = []
+
+    def __attrs_post_init__(self):
+        self._cleanup_exceptions: List[Exception] = []
 
     def cleanup(self):
         self.remove_keypair()
