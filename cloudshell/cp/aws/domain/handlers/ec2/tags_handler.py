@@ -41,9 +41,9 @@ class TagsHandler:
     _tags_dict: Dict[str, str] = {}
 
     @classmethod
-    def from_tags_list(cls, tags_list: List[Dict[str, str]]) -> "TagsHandler":
+    def from_tags_list(cls, tags_list: Optional[List[Dict[str, str]]]) -> "TagsHandler":
         tags_dict = {}
-        for tag in tags_list:
+        for tag in tags_list or []:
             tags_dict[tag["Key"]] = tag["Value"]
         return cls(tags_dict)
 
