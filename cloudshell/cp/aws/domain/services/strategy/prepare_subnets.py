@@ -153,15 +153,16 @@ class PrepareSubnetsAbsStrategy(metaclass=ABCMeta):
 
     @subnet_step_wrapper
     def create_new_subnet_if_needed(self, item: "ActionItem", availability_zone: str):
-        alias = item.action.actionParams.alias
-        self._logger.info(
-            f"Create subnet (alias: {alias}, cidr: {item.cidr}, availability-zone: "
-            f"{availability_zone})"
-        )
-        item.subnet = self._subnet_service.create_subnet_nowait(
-            self.vpc, item.cidr, availability_zone
-        )
-        item.is_new_subnet = True
+        if not item.subnet:
+            alias = item.action.actionParams.alias
+            self._logger.info(
+                f"Create subnet (alias: {alias}, cidr: {item.cidr}, availability-zone: "
+                f"{availability_zone})"
+            )
+            item.subnet = self._subnet_service.create_subnet_nowait(
+                self.vpc, item.cidr, availability_zone
+            )
+            item.is_new_subnet = True
 
     @subnet_step_wrapper
     def wait_till_available(self, item: "ActionItem"):

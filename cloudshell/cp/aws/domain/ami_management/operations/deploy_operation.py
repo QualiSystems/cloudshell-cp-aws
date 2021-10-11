@@ -121,7 +121,7 @@ class DeployAMIOperation:
             ami_deploy_action.actionParams.deployment.customModel
         )
         vpc = self._get_vpc(
-            ec2_session, aws_ec2_cp_resource_model, reservation.reservation_id
+            ec2_session, aws_ec2_cp_resource_model, reservation.reservation_id, logger
         )
         key_name = self.key_pair_service.get_reservation_key_name(
             reservation_id=reservation.reservation_id
@@ -259,13 +259,17 @@ class DeployAMIOperation:
         ec2_session: "EC2ServiceResource",
         aws_model: "AWSEc2CloudProviderResourceModel",
         reservation_id: str,
+        logger: "Logger",
     ) -> "Vpc":
         vpc = None
-        if aws_model.vpc_mode in (VpcMode.DYNAMIC, VpcMode.SINGLE):
+        if aws_model.vpc_mode in (VpcMode.DYNAMIC, VpcMode.STATIC):
+            logger.info(f"Getting the VPC for the reservation {reservation_id}")
             vpc = self.vpc_service.find_vpc_for_reservation(ec2_session, reservation_id)
         elif aws_model.vpc_mode is VpcMode.SHARED:
+            logger.info(f"Getting the VPC by the id {aws_model.shared_vpc_id}")
             vpc = self.vpc_service.get_vpc_by_id(ec2_session, aws_model.shared_vpc_id)
         elif aws_model.vpc_mode is VpcMode.SINGLE:
+            logger.info(f"Getting the VPC by the id {aws_model.aws_mgmt_vpc_id}")
             vpc = self.vpc_service.get_vpc_by_id(ec2_session, aws_model.aws_mgmt_vpc_id)
 
         if not vpc:
@@ -490,7 +494,7 @@ class DeployAMIOperation:
             IsolationTagValue.EXCLUSIVE,
             TypeTagValue.INBOUND_PORTS,
         )
-        security_group.create_tags(Tags=tags.aws_tags)
+        self.security_group_service.add_tags(security_group, tags.aws_tags)
 
         self.security_group_service.set_security_group_rules(
             security_group=security_group,

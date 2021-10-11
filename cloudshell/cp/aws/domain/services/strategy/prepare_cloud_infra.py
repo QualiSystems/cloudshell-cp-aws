@@ -130,8 +130,15 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
         sg_name = self._security_group_service.sandbox_isolated_sg_name(
             self._reservation.reservation_id
         )
+        self._logger.info(
+            f"Searching for an isolated SG '{sg_name}' in the VPC '{self.vpc_name}'"
+        )
         sg = self._security_group_service.get_security_group_by_name(self.vpc, sg_name)
         if not sg:
+            self._logger.info(
+                f"The isolated SG '{sg_name}' not found in the VPC '{self.vpc_name}'. "
+                "Creating a new one."
+            )
             sg = self._security_group_service.create_security_group(
                 self._aws_clients.ec2_session, self.vpc.id, sg_name
             )
@@ -141,15 +148,22 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
                 IsolationTagValue.SHARED,
                 TypeTagValue.ISOLATED,
             )
-            sg.create_tags(Tags=tags.aws_tags)
+            self._security_group_service.add_tags(sg, tags.aws_tags)
         return sg
 
     def create_default_sg(self) -> "SecurityGroup":
         sg_name = self._security_group_service.sandbox_default_sg_name(
             self._reservation.reservation_id
         )
+        self._logger.info(
+            f"Searching for a default SG '{sg_name}' in the VPC '{self.vpc_name}'"
+        )
         sg = self._security_group_service.get_security_group_by_name(self.vpc, sg_name)
         if not sg:
+            self._logger.info(
+                f"The default SG '{sg_name}' not found in the VPC '{self.vpc_name}'. "
+                "Creating a new one."
+            )
             sg = self._security_group_service.create_security_group(
                 self._aws_clients.ec2_session, self.vpc.id, sg_name
             )
@@ -159,7 +173,7 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
                 IsolationTagValue.SHARED,
                 TypeTagValue.DEFAULT,
             )
-            sg.create_tags(Tags=tags.aws_tags)
+            self._security_group_service.add_tags(sg, tags.aws_tags)
         return sg
 
     @abstractmethod

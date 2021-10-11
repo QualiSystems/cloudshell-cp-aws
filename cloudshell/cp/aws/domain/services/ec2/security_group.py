@@ -1,6 +1,8 @@
 import uuid
 from typing import TYPE_CHECKING, List, Optional
 
+from retrying import retry
+
 from cloudshell.cp.aws.domain.handlers.ec2 import (
     IsolationTagValue,
     TagsHandler,
@@ -340,7 +342,7 @@ class SecurityGroupService:
             IsolationTagValue.EXCLUSIVE,
             TypeTagValue.INTERFACE,
         )
-        custom_security_group.create_tags(Tags=tags.aws_tags)
+        self.add_tags(custom_security_group, tags.aws_tags)
 
         # attach the custom security group to the nic
         custom_security_group_id = custom_security_group.group_id
@@ -377,3 +379,7 @@ class SecurityGroupService:
                 self.CLOUDSHELL_SANDBOX_ISOLATED_SG_STARTS
             ),
         )
+
+    @retry(stop_max_attempt_number=30, wait_fixed=1000)
+    def add_tags(self, sg: "SecurityGroup", tags: list):
+        sg.create_tags(Tags=tags)
