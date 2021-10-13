@@ -12,6 +12,10 @@ from cloudshell.cp.aws.domain.ami_management.operations.deploy_operation import 
     DeployAMIOperation,
 )
 from cloudshell.cp.aws.domain.common.exceptions import CancellationException
+from cloudshell.cp.aws.domain.services.ec2.vpc import (
+    VpcNotFoundByReservationId,
+    VPCService,
+)
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 from cloudshell.cp.aws.models.network_actions_models import DeployNetworkingResultModel
 
@@ -742,8 +746,18 @@ class TestDeployOperation(TestCase):
 
     def test_deploy_raised_no_vpc(self):
         # arrange
-        my_vpc_service = Mock()
-        my_vpc_service.get_vpc.return_value = None
+        my_vpc_service = VPCService(
+            self.subnet_service,
+            self.instance_service,
+            Mock(),
+            self.security_group_service,
+            Mock(),
+        )
+        my_vpc_service.find_vpc_for_reservation = lambda *args, **kwargs: None
+        ami_deploy_action = Mock()
+        ami_deploy_action.actionParams.deployment.customModel = Mock(
+            inbound_ports=[], outbound_ports=[]
+        )
         deploy_operation = DeployAMIOperation(
             self.instance_service,
             self.credentials_manager,
@@ -758,17 +772,17 @@ class TestDeployOperation(TestCase):
         )
 
         # act & assert
-        with self.assertRaisesRegexp(ValueError, "VPC is not set for this reservation"):
+        with self.assertRaises(VpcNotFoundByReservationId):
             deploy_operation.deploy(
                 ec2_session=Mock(),
                 s3_session=Mock(),
                 name=Mock(),
                 reservation=Mock(),
-                aws_ec2_cp_resource_model=Mock(),
-                ami_deploy_action=Mock(),
+                aws_ec2_cp_resource_model=Mock(vpc_mode=VpcMode.DYNAMIC),
+                ami_deploy_action=ami_deploy_action,
                 network_actions=[Mock()],
                 ec2_client=Mock(),
-                cancellation_context=Mock(),
+                cancellation_context=CancellationContext(),
                 logger=self.logger,
             )
 
