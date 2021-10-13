@@ -108,16 +108,21 @@ class PrepareSandboxInfraOperation:
 
         # Execute prepareSubnet actions
         subnet_actions = [a for a in actions if isinstance(a, PrepareSubnet)]
-        subnet_results = self._prepare_subnets(
-            cs_subnet_service,
-            subnet_actions,
-            aws_clients,
-            aws_model,
-            reservation,
-            cancellation_context,
-            logger,
-        )
-        results.extend(subnet_results)
+        try:
+            subnet_results = self._prepare_subnets(
+                cs_subnet_service,
+                subnet_actions,
+                aws_clients,
+                aws_model,
+                reservation,
+                cancellation_context,
+                logger,
+            )
+            results.extend(subnet_results)
+        except Exception as e:
+            logger.exception("Error in prepare subnets.")
+            for action in subnet_actions:
+                results.append(self._create_fault_action_result(action, e))
 
         logger.info("Prepare Connectivity completed")
         return results
