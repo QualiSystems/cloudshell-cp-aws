@@ -90,9 +90,6 @@ from cloudshell.cp.aws.domain.services.waiters.instance import InstanceWaiter
 from cloudshell.cp.aws.domain.services.waiters.password import PasswordWaiter
 from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
 from cloudshell.cp.aws.domain.services.waiters.vpc import VPCWaiter
-from cloudshell.cp.aws.domain.services.waiters.vpc_peering import (
-    VpcPeeringConnectionWaiter,
-)
 from cloudshell.cp.aws.models.network_actions_models import (
     SetAppSecurityGroupActionResult,
 )
@@ -125,7 +122,6 @@ class AWSShell:
         self.subnet_waiter = SubnetWaiter()
         self.subnet_service = SubnetService(self.subnet_waiter)
         self.s3_service = S3BucketService()
-        self.vpc_peering_waiter = VpcPeeringConnectionWaiter()
         self.key_pair_service = KeyPairService(self.s3_service)
         self.vpc_waiter = VPCWaiter()
         self.network_interface_service = NetworkInterfaceService(
@@ -145,7 +141,6 @@ class AWSShell:
             subnet_service=self.subnet_service,
             instance_service=self.instance_service,
             vpc_waiter=self.vpc_waiter,
-            vpc_peering_waiter=self.vpc_peering_waiter,
             sg_service=self.security_group_service,
             traffic_mirror_service=self.traffic_mirror_service,
         )

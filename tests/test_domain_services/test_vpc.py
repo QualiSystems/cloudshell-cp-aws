@@ -20,7 +20,6 @@ class TestVPCService(TestCase):
         self.reservation = Mock()
         self.cidr = Mock()
         self.vpc_waiter = Mock()
-        self.vpc_peering_waiter = Mock()
         self.instance_service = Mock()
         self.sg_service = Mock()
         self.route_table_service = Mock()
@@ -29,7 +28,6 @@ class TestVPCService(TestCase):
             subnet_service=self.subnet_service,
             instance_service=self.instance_service,
             vpc_waiter=self.vpc_waiter,
-            vpc_peering_waiter=self.vpc_peering_waiter,
             sg_service=self.sg_service,
             traffic_mirror_service=self.traffic_mirror_service,
         )

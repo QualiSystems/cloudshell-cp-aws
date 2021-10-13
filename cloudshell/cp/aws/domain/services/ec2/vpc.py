@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Iterable, List, Optional
 
+from botocore.exceptions import ClientError
 from retrying import retry
 
 from cloudshell.cp.aws.domain.conncetivity.operations.traffic_mirror_cleaner import (
@@ -29,6 +30,20 @@ class FailedToDeleteRouteTables(VpcError):
         super().__init__(f"Failed to remove route tables. Errors: {errors}")
 
 
+class VpcNotFound(VpcError):
+    ...
+
+
+class VpcNotFoundById(VpcNotFound):
+    def __init__(self, vpc_id: str):
+        super().__init__(f"Failed to find VPC with id '{vpc_id}'")
+
+
+class VpcNotFoundByReservationId(VpcNotFound):
+    def __init__(self, reservation_id: str):
+        super().__init__(f"Failed to find VPC with reservation id {reservation_id}")
+
+
 class VPCService:
     VPC_RESERVATION = "VPC Reservation: {0}"
 
@@ -37,7 +52,6 @@ class VPCService:
         subnet_service,
         instance_service,
         vpc_waiter,
-        vpc_peering_waiter,
         sg_service,
         traffic_mirror_service,
     ):
@@ -46,17 +60,14 @@ class VPCService:
         :type subnet_service: cloudshell.cp.aws.domain.services.ec2.subnet.SubnetService
         :param instance_service: Instance Service
         :type instance_service: cloudshell.cp.aws.domain.services.ec2.instance.InstanceService
-        :param vpc_waiter: Vpc Peering Connection Waiter
+        :param vpc_waiter: Vpc Waiter
         :type vpc_waiter: cloudshell.cp.aws.domain.services.waiters.vpc.VPCWaiter
-        :param vpc_peering_waiter: Vpc Peering Connection Waiter
-        :type vpc_peering_waiter: cloudshell.cp.aws.domain.services.waiters.vpc_peering.VpcPeeringConnectionWaiter
         :param sg_service: Security Group Service
         :type sg_service: cloudshell.cp.aws.domain.services.ec2.security_group.SecurityGroupService
         """
         self.subnet_service = subnet_service
         self.instance_service = instance_service
         self.vpc_waiter = vpc_waiter
-        self.vpc_peering_waiter = vpc_peering_waiter
         self.sg_service = sg_service
         self.traffic_mirror_service = traffic_mirror_service
 
@@ -99,9 +110,25 @@ class VPCService:
 
         return vpcs[0]
 
+    def get_vpc_for_reservation(
+        self, ec2_session: "EC2ServiceResource", reservation_id: str
+    ) -> "Vpc":
+        vpc = self.find_vpc_for_reservation(ec2_session, reservation_id)
+        if not vpc:
+            raise VpcNotFoundByReservationId(reservation_id)
+        return vpc
+
     @staticmethod
     def get_vpc_by_id(ec2_session: "EC2ServiceResource", vpc_id: str) -> "Vpc":
-        return ec2_session.Vpc(vpc_id)
+        vpc = ec2_session.Vpc(vpc_id)
+        try:
+            vpc.load()
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") == "InvalidVpcID.NotFound":
+                raise VpcNotFoundById(vpc_id)
+            else:
+                raise
+        return vpc
 
     @staticmethod
     def _set_tags(vpc_name: str, reservation: "ReservationModel", vpc: "Vpc"):

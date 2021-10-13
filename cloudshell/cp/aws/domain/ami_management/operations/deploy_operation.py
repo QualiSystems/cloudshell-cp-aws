@@ -261,19 +261,18 @@ class DeployAMIOperation:
         reservation_id: str,
         logger: "Logger",
     ) -> "Vpc":
-        vpc = None
         if aws_model.vpc_mode in (VpcMode.DYNAMIC, VpcMode.STATIC):
             logger.info(f"Getting the VPC for the reservation {reservation_id}")
-            vpc = self.vpc_service.find_vpc_for_reservation(ec2_session, reservation_id)
+            vpc = self.vpc_service.get_vpc_for_reservation(ec2_session, reservation_id)
         elif aws_model.vpc_mode is VpcMode.SHARED:
             logger.info(f"Getting the VPC by the id {aws_model.shared_vpc_id}")
             vpc = self.vpc_service.get_vpc_by_id(ec2_session, aws_model.shared_vpc_id)
         elif aws_model.vpc_mode is VpcMode.SINGLE:
             logger.info(f"Getting the VPC by the id {aws_model.aws_mgmt_vpc_id}")
             vpc = self.vpc_service.get_vpc_by_id(ec2_session, aws_model.aws_mgmt_vpc_id)
+        else:
+            raise ValueError(f"VpcMode is wrong {aws_model.vpc_mode}")
 
-        if not vpc:
-            raise ValueError("VPC is not set for this reservation")
         return vpc
 
     def _validate_public_subnet_exist_if_requested_public_or_elastic_ips(

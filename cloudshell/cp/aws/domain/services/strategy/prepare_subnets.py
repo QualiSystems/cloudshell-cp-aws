@@ -221,7 +221,7 @@ class PrepareSubnetsAbsStrategy(metaclass=ABCMeta):
 
 class PrepareSubnetsDynamicStrategy(PrepareSubnetsAbsStrategy):
     def _get_vpc(self):
-        return self._vpc_service.find_vpc_for_reservation(
+        return self._vpc_service.get_vpc_for_reservation(
             self._aws_clients.ec2_session, self._reservation.reservation_id
         )
 
@@ -251,7 +251,7 @@ class PrepareSubnetsDynamicStrategy(PrepareSubnetsAbsStrategy):
 
 class PrepareSubnetsStaticStrategy(PrepareSubnetsAbsStrategy):
     def _get_vpc(self):
-        return self._vpc_service.find_vpc_for_reservation(
+        return self._vpc_service.get_vpc_for_reservation(
             self._aws_clients.ec2_session, self._reservation.reservation_id
         )
 
