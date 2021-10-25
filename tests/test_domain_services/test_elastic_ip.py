@@ -41,7 +41,7 @@ class TestElasticIpService(TestCase):
         ec2_session.vpc_addresses.filter = Mock(return_value=[])
 
         # act & assert
-        with self.assertRaisesRegexp(ValueError, "Failed to find elastic ip xxx"):
+        with self.assertRaisesRegex(ValueError, "Failed to find elastic ip xxx"):
             self.elastic_ip_service.find_and_release_elastic_address(
                 ec2_session=ec2_session, elastic_ip=elastic_ip
             )
@@ -79,7 +79,7 @@ class TestElasticIpService(TestCase):
         elastic_ip = Mock()
 
         # act
-        with self.assertRaisesRegexp(ValueError, "Failed to find elastic ip"):
+        with self.assertRaisesRegex(ValueError, "Failed to find elastic ip"):
             self.elastic_ip_service.associate_elastic_ip_to_network_interface(
                 ec2_session=ec2_session,
                 interface_id=interface_id,
@@ -109,7 +109,7 @@ class TestElasticIpService(TestCase):
         elastic_ip = Mock()
 
         # act
-        with self.assertRaisesRegexp(ValueError, "Failed to find elastic ip"):
+        with self.assertRaisesRegex(ValueError, "Failed to find elastic ip"):
             self.elastic_ip_service.associate_elastic_ip_to_instance(
                 ec2_session=ec2_session, instance=instance, elastic_ip=elastic_ip
             )

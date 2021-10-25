@@ -163,7 +163,7 @@ class TestPrepareSandboxInfra(TestCase):
         actions.append(prepare_subnet_sub_b)
 
         # Assert
-        with self.assertRaisesRegexp(ValueError, "^((?!limit).)*$"):
+        with self.assertRaisesRegex(ValueError, "^((?!limit).)*$"):
             self.prepare_conn.prepare_connectivity(
                 aws_clients=self.aws_clients,
                 reservation=self.reservation,
