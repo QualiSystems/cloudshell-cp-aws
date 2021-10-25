@@ -355,7 +355,7 @@ class TestDeployOperation(TestCase):
         root_device = {"DeviceName": image.root_device_name, "Ebs": {}}
         image.block_device_mappings = [root_device]
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError,
             "Requested storage size is bigger than the max allowed storage size of 30",
         ):
@@ -379,7 +379,7 @@ class TestDeployOperation(TestCase):
         root_device = {"DeviceName": image.root_device_name, "Ebs": {}}
         image.block_device_mappings = [root_device]
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError,
             "Requested storage IOPS is bigger than the max allowed storage IOPS of 100",
         ):
@@ -622,7 +622,7 @@ class TestDeployOperation(TestCase):
 
         network_actions = [Mock(spec=ConnectSubnet), Mock(spec=ConnectSubnet)]
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError, "Public IP option is not supported with multiple subnets"
         ):
             self.deploy_operation._prepare_network_interfaces(

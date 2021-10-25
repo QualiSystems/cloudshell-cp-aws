@@ -37,7 +37,7 @@ class SnapshotOperation:
         if not no_reboot:
             pass  # todo - stop instance and change live status icon
 
-        image_name = "{}-{}".format(deployed_app_name, uuid.uuid4().hex[:8])
+        image_name = f"{deployed_app_name}-{uuid.uuid4().hex[:8]}"
 
         # save image from instance
         image = instance.create_image(Name=image_name)

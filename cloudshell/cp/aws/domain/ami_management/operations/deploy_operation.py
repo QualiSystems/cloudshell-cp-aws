@@ -696,10 +696,7 @@ class DeployAMIOperation:
                 )
             ]
 
-        logger.info(
-            "Created dtos for {} network interfaces".format(len(net_interfaces))
-        )
-
+        logger.info(f"Created dtos for {len(net_interfaces)} network interfaces")
         return net_interfaces
 
     def _get_private_ip_for_subnet(self, ami_deployment_model, subnet_cidr):

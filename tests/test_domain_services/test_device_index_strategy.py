@@ -58,7 +58,7 @@ class TestAllocateMissingValuesDeviceIndexStrategy(TestCase):
         actions = [action1, action2, action3]
 
         # act & assert
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError, "Duplicate 'Requested vNic Name' attribute value found"
         ):
             self.strategy.apply(actions)
@@ -80,7 +80,7 @@ class TestAllocateMissingValuesDeviceIndexStrategy(TestCase):
         actions = [action1, action2, action3]
 
         # act & assert
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError,
             "'Requested vNic Name' attribute values are not a continuous list",
         ):

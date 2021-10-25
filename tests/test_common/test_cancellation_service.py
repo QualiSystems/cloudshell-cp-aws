@@ -17,7 +17,7 @@ class TestCancellationService(TestCase):
         cancellation_context = Mock(is_cancelled=True)
 
         # act & assert
-        with self.assertRaisesRegexp(CancellationException, "Command was cancelled"):
+        with self.assertRaisesRegex(CancellationException, "Command was cancelled"):
             cancellation_service.check_if_cancelled(cancellation_context)
 
     def test_exception_with_data_on_command_cancellation(self):
@@ -27,7 +27,7 @@ class TestCancellationService(TestCase):
         data = Mock()
 
         # act & assert
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             CancellationException, "Command was cancelled"
         ) as assert_exc:
             cancellation_service.check_if_cancelled(cancellation_context, data=data)
