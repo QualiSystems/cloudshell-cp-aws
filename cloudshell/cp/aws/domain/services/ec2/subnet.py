@@ -15,11 +15,11 @@ class SubnetService:
     def __init__(self, subnet_waiter: SubnetWaiter):
         self.subnet_waiter = subnet_waiter
 
+    @staticmethod
     def create_subnet_nowait(
-        self,
-        vpc,
-        cidr,
-        availability_zone,
+        vpc: "Vpc",
+        cidr: str,
+        availability_zone: str,
     ):
         return vpc.create_subnet(CidrBlock=cidr, AvailabilityZone=availability_zone)
 
@@ -39,7 +39,10 @@ class SubnetService:
                 return subnet
         raise Exception(f"There isn't the subnet for the reservation '{rid}'")
 
-    def get_first_or_none_subnet_from_vpc(self, vpc, cidr=None) -> Optional["Subnet"]:
+    @staticmethod
+    def get_first_or_none_subnet_from_vpc(
+        vpc: "Vpc", cidr: Optional[str] = None
+    ) -> Optional["Subnet"]:
         subnets = list(vpc.subnets.all())
         if cidr:
             subnets = [s for s in subnets if s.cidr_block == cidr]

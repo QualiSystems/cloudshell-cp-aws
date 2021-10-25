@@ -1,4 +1,3 @@
-import ipaddress
 from abc import ABCMeta, abstractmethod
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, List, Optional
@@ -11,6 +10,10 @@ from cloudshell.cp.core.models import PrepareCloudInfraResult
 from cloudshell.cp.aws.common.cached_property import cached_property
 from cloudshell.cp.aws.domain.common.cancellation_service import check_if_cancelled
 from cloudshell.cp.aws.domain.handlers.ec2 import RouteTableHandler, TagsHandler
+from cloudshell.cp.aws.domain.handlers.ec2.cidr_block_handler import (
+    CidrHandler,
+    CidrListHandler,
+)
 from cloudshell.cp.aws.domain.services.ec2.subnet import get_subnet_reservation_name
 from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
@@ -41,11 +44,18 @@ if TYPE_CHECKING:
 @attr.s(auto_attribs=True)
 class ActionItem:
     action: "PrepareSubnet"
-    cidr: Optional[str] = None
+    cidr: "CidrHandler"
     subnet: Optional["Subnet"] = None
     is_new_subnet: bool = False
     subnet_rt: Optional["RouteTableHandler"] = None
     error: Optional[Exception] = None
+
+    @classmethod
+    def from_action(cls, action: "PrepareSubnet") -> "ActionItem":
+        return cls(
+            action,
+            CidrHandler(action.actionParams.cidr),
+        )
 
 
 class StepFunc(Protocol):
@@ -90,7 +100,7 @@ class PrepareSubnetsAbsStrategy(metaclass=ABCMeta):
             self._aws_clients.ec2_client, self.vpc, self._aws_model
         )
         is_multi_subnet_mode = len(self._subnet_actions) > 1
-        action_items = list(map(ActionItem, self._subnet_actions))
+        action_items = list(map(ActionItem.from_action, self._subnet_actions))
 
         for item in action_items:
             self.set_subnet_cidr(item, is_multi_subnet_mode=is_multi_subnet_mode)
@@ -114,14 +124,8 @@ class PrepareSubnetsAbsStrategy(metaclass=ABCMeta):
     def _get_vpc(self) -> "Vpc":
         raise NotImplementedError
 
-    def _validate_subnet_cidr(self, subnet_cidr: str):
-        vpc_cidr = self.vpc.cidr_block
-
-        vpc_net = ipaddress.IPv4Network(vpc_cidr)
-        subnet_net = ipaddress.IPv4Network(subnet_cidr)
-        if not vpc_net.supernet_of(subnet_net):
-            msg = f"Subnet CIDR {subnet_cidr} is not inside VPC CIDR {vpc_cidr}"
-            raise ValueError(msg)
+    def _validate_subnet_cidr(self, subnet_cidr: "CidrHandler"):
+        CidrListHandler.from_vpc(self.vpc).validate_is_supernet_of(subnet_cidr)
 
     @subnet_step_wrapper
     def set_subnet_cidr(self, item: "ActionItem", is_multi_subnet_mode: bool):
@@ -137,7 +141,7 @@ class PrepareSubnetsAbsStrategy(metaclass=ABCMeta):
         rid = self._reservation.reservation_id
         self._logger.info(f"Check if subnet (cidr={item.cidr}) already exists")
         subnet = self._subnet_service.get_first_or_none_subnet_from_vpc(
-            self.vpc, item.cidr
+            self.vpc, str(item.cidr)
         )
         if subnet:
             tags = TagsHandler.from_tags_list(subnet.tags)
@@ -160,7 +164,7 @@ class PrepareSubnetsAbsStrategy(metaclass=ABCMeta):
                 f"{availability_zone})"
             )
             item.subnet = self._subnet_service.create_subnet_nowait(
-                self.vpc, item.cidr, availability_zone
+                self.vpc, str(item.cidr), availability_zone
             )
             item.is_new_subnet = True
 
@@ -227,12 +231,10 @@ class PrepareSubnetsDynamicStrategy(PrepareSubnetsAbsStrategy):
 
     def _set_subnet_cidr(self, item: "ActionItem", is_multi_subnet_mode: bool):
         alias = getattr(item.action.actionParams, "alias", "Default Subnet")
-        cidr = item.action.actionParams.cidr
         self._logger.info(
-            f"Decided to use subnet CIDR {cidr} as defined on subnet request "
+            f"Decided to use subnet CIDR {item.cidr} as defined on subnet request "
             f"for subnet {alias}"
         )
-        item.cidr = cidr
 
     def _attach_route_table(self, item: "ActionItem"):
         if not item.action.actionParams.isPublic:
@@ -257,19 +259,17 @@ class PrepareSubnetsStaticStrategy(PrepareSubnetsAbsStrategy):
 
     def _set_subnet_cidr(self, item: "ActionItem", is_multi_subnet_mode: bool):
         alias = getattr(item.action.actionParams, "alias", "Default Subnet")
-        cidr = self._aws_model.static_vpc_cidr
-        if cidr and not is_multi_subnet_mode:
+        if self._aws_model.static_vpc_cidr and not is_multi_subnet_mode:
+            item.cidr = CidrHandler(self._aws_model.static_vpc_cidr)
             self._logger.info(
-                f"Decided to use subnet CIDR {cidr} as defined on cloud provider "
+                f"Decided to use subnet CIDR {item.cidr} as defined on cloud provider "
                 f"for subnet {alias}"
             )
         else:
-            cidr = item.action.actionParams.cidr
             self._logger.info(
-                f"Decided to use subnet CIDR {cidr} as defined on subnet request "
+                f"Decided to use subnet CIDR {item.cidr} as defined on subnet request "
                 f"for subnet {alias}"
             )
-        item.cidr = cidr
 
     def _attach_route_table(self, item: "ActionItem"):
         if not item.action.actionParams.isPublic:
@@ -293,19 +293,18 @@ class PrepareSubnetsSharedStrategy(PrepareSubnetsAbsStrategy):
         )
 
     def _patch_subnet_cidr(self, item: "ActionItem"):
-        self._cs_subnet_service.patch_subnet_cidr(
-            item, self.vpc.cidr_block, self._logger
-        )
+        vpc_cidr_block_handler = CidrListHandler.from_vpc(self.vpc)
+        cidr = vpc_cidr_block_handler.patch_cidr_to_be_inside(item.cidr, self._logger)
+        if not cidr == item.cidr:
+            item.cidr = cidr
 
     def _set_subnet_cidr(self, item: "ActionItem", is_multi_subnet_mode: bool):
         self._patch_subnet_cidr(item)
         alias = getattr(item.action.actionParams, "alias", "Default Subnet")
-        cidr = item.action.actionParams.cidr
         self._logger.info(
-            f"Decided to use subnet CIDR {cidr} as defined on subnet request "
+            f"Decided to use subnet CIDR {item.cidr} as defined on subnet request "
             f"for subnet {alias}"
         )
-        item.cidr = cidr
 
     def _attach_route_table(self, item: "ActionItem"):
         if item.action.actionParams.isPublic:
@@ -344,12 +343,10 @@ class PrepareSubnetsSingleStrategy(PrepareSubnetsAbsStrategy):
 
     def _set_subnet_cidr(self, item: "ActionItem", is_multi_subnet_mode: bool):
         alias = getattr(item.action.actionParams, "alias", "Default Subnet")
-        cidr = item.action.actionParams.cidr
         self._logger.info(
-            f"Decided to use subnet CIDR {cidr} as defined on subnet request "
+            f"Decided to use subnet CIDR {item.cidr} as defined on subnet request "
             f"for subnet {alias}"
         )
-        item.cidr = cidr
 
     def _attach_route_table(self, item: "ActionItem"):
         if item.action.actionParams.isPublic:
