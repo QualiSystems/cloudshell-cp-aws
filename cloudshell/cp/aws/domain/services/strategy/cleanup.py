@@ -315,7 +315,6 @@ class CleanupSandboxInfraSingleVpcStrategy(CleanupSandboxInfraAbsStrategy):
 
     def _remove_blackhole_routes_mgt_vpc(self):
         """In the Shared VPC mode we do not create routes to Management VPC."""
-        pass
 
     def _remove_custom_route_tables(self):
         self._logger.info(
@@ -328,7 +327,6 @@ class CleanupSandboxInfraSingleVpcStrategy(CleanupSandboxInfraAbsStrategy):
 
     def _remove_vpc(self):
         """In the Single VPC mode we do not create the VPC."""
-        pass
 
 
 STRATEGIES = {
