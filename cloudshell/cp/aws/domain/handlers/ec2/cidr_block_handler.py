@@ -1,5 +1,4 @@
 import itertools
-from collections.abc import Iterator as abc_Iterator
 from functools import total_ordering
 from ipaddress import IPv4Network
 from logging import Logger
@@ -86,7 +85,7 @@ class CidrHandler:
 
 
 @attr.s(auto_attribs=True)
-class CidrListHandler(abc_Iterator):
+class CidrListHandler:
     _cidr_list: List[CidrHandler]
 
     @classmethod
@@ -98,12 +97,11 @@ class CidrListHandler(abc_Iterator):
         ]
         return cls(cidrs)
 
-    @property
     def __iter__(self) -> Iterator[CidrHandler]:
         return iter(self._cidr_list)
 
     def __str__(self):
-        return str(self._cidr_list)
+        return str(list(map(str, self)))
 
     @property
     def main_cidr(self) -> CidrHandler:
