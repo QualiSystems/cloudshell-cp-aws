@@ -166,7 +166,7 @@ class VpcPeeringHandler:
         return self.status is Status.FAILED
 
     @property  # noqa: A003
-    def id(self) -> str:
+    def id(self) -> str:  # noqa: A003
         return self._vpc_peering.id
 
     @cached_property
