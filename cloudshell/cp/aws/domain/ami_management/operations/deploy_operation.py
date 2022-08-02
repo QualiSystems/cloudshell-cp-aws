@@ -120,9 +120,17 @@ class DeployAMIOperation:
         ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel" = (  # noqa
             ami_deploy_action.actionParams.deployment.customModel
         )
-        vpc = self._get_vpc(
-            ec2_session, aws_ec2_cp_resource_model, reservation.reservation_id, logger
-        )
+        if network_actions:
+            subnet_id = network_actions[0].actionParams.subnetId
+            subnet = list(ec2_session.subnets.filter(SubnetIds=[subnet_id]))[0]
+            vpc = subnet.vpc
+        else:
+            vpc = self._get_vpc(
+                ec2_session,
+                aws_ec2_cp_resource_model,
+                reservation.reservation_id,
+                logger,
+            )
         key_name = self.key_pair_service.get_reservation_key_name(
             reservation_id=reservation.reservation_id
         )

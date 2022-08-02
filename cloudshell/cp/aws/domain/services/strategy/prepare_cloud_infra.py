@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 import attr
 
@@ -48,16 +50,16 @@ if TYPE_CHECKING:
 
 @attr.s(auto_attribs=True)
 class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
-    _vpc_service: "VPCService"
-    _security_group_service: "SecurityGroupService"
-    _aws_clients: "AwsApiClients"
-    _aws_model: "AWSEc2CloudProviderResourceModel"
-    _reservation: "ReservationModel"
-    _network_action: "PrepareCloudInfra"
-    _cancellation_context: "CancellationContext"
-    _logger: "Logger"
+    _vpc_service: VPCService
+    _security_group_service: SecurityGroupService
+    _aws_clients: AwsApiClients
+    _aws_model: AWSEc2CloudProviderResourceModel
+    _reservation: ReservationModel
+    _network_action: PrepareCloudInfra
+    _cancellation_context: CancellationContext
+    _logger: Logger
 
-    def prepare(self) -> "PrepareCloudInfraResult":
+    def prepare(self) -> PrepareCloudInfraResult:
         check_if_cancelled(self._cancellation_context)
         vpc = self.vpc
         self.enable_dns_hostnames(vpc)
@@ -81,39 +83,39 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
         return self.prepare_result([isolated_sg, default_sg])
 
     @cached_property
-    def vpc(self) -> "Vpc":
+    def vpc(self) -> Vpc:
         """Get or create a VPC based on the VPC mode."""
         return self._get_or_create_vpc()
 
     @abstractmethod
-    def _get_or_create_vpc(self) -> "Vpc":
+    def _get_or_create_vpc(self) -> Vpc:
         raise NotImplementedError
 
     @cached_property
     def vpc_name(self) -> str:
         return self._vpc_service.get_name(self.vpc)
 
-    def enable_dns_hostnames(self, vpc: "Vpc"):
+    def enable_dns_hostnames(self, vpc: Vpc):
         self._logger.info(f"Enable dns for the VPC '{self.vpc_name}'")
         self._vpc_service.modify_vpc_attribute(
             self._aws_clients.ec2_client, self.vpc.vpc_id, enable_dns_hostnames=True
         )
 
     @abstractmethod
-    def get_or_create_igw(self) -> Optional["InternetGateway"]:
+    def get_or_create_igw(self) -> InternetGateway | None:
         raise NotImplementedError
 
     @abstractmethod
-    def get_or_create_public_rt(self) -> "RouteTableHandler":
+    def get_or_create_public_rt(self) -> RouteTableHandler:
         raise NotImplementedError
 
-    def get_or_create_private_rt(self) -> "RouteTableHandler":
+    def get_or_create_private_rt(self) -> RouteTableHandler:
         return RouteTableHandler.get_or_create_private_rt(
             self.vpc, self._reservation, self._logger
         )
 
     def add_route_to_igw(
-        self, public_rt: "RouteTableHandler", igw: Optional["InternetGateway"]
+        self, public_rt: RouteTableHandler, igw: InternetGateway | None
     ):
         if not igw:
             return
@@ -126,11 +128,11 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
 
     @abstractmethod
     def connect_vpc_to_mgmt_vpc(
-        self, public_rt: "RouteTableHandler", private_rt: "RouteTableHandler"
+        self, public_rt: RouteTableHandler, private_rt: RouteTableHandler
     ):
         raise NotImplementedError
 
-    def create_isolated_sg(self) -> "SecurityGroup":
+    def create_isolated_sg(self) -> SecurityGroup:
         sg_name = self._security_group_service.sandbox_isolated_sg_name(
             self._reservation.reservation_id
         )
@@ -155,7 +157,7 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
             tags.add_tags_to_obj(sg)
         return sg
 
-    def create_default_sg(self) -> "SecurityGroup":
+    def create_default_sg(self) -> SecurityGroup:
         sg_name = self._security_group_service.sandbox_default_sg_name(
             self._reservation.reservation_id
         )
@@ -181,13 +183,13 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
         return sg
 
     @abstractmethod
-    def set_sg_rules(self, isolated_sg: "SecurityGroup", default_sg: "SecurityGroup"):
+    def set_sg_rules(self, isolated_sg: SecurityGroup, default_sg: SecurityGroup):
         raise NotImplementedError
 
     def prepare_result(
         self,
-        security_groups: List["SecurityGroup"],
-    ) -> "PrepareCloudInfraResult":
+        security_groups: list[SecurityGroup],
+    ) -> PrepareCloudInfraResult:
         result = PrepareCloudInfraResult(
             actionId=self._network_action.actionId,
             success=True,
@@ -202,7 +204,7 @@ class PrepareCloudInfraDynamicStrategy(PrepareCloudInfraAbsStrategy):
     def _get_vpc_cidr(self) -> str:
         return self._network_action.actionParams.cidr
 
-    def _get_or_create_vpc(self) -> "Vpc":
+    def _get_or_create_vpc(self) -> Vpc:
         return self._vpc_service.get_or_create_vpc_for_reservation(
             self._reservation,
             self._aws_clients.ec2_session,
@@ -210,17 +212,17 @@ class PrepareCloudInfraDynamicStrategy(PrepareCloudInfraAbsStrategy):
             self._logger,
         )
 
-    def get_or_create_igw(self) -> "InternetGateway":
+    def get_or_create_igw(self) -> InternetGateway:
         return self._vpc_service.get_or_create_igw(
             self._aws_clients.ec2_session, self.vpc, self._reservation, self._logger
         )
 
-    def get_or_create_public_rt(self) -> "RouteTableHandler":
+    def get_or_create_public_rt(self) -> RouteTableHandler:
         self._logger.info(f"Getting a main route table for the VPC '{self.vpc_name}'")
         return RouteTableHandler.get_main_rt(self.vpc, self._reservation)
 
     def connect_vpc_to_mgmt_vpc(
-        self, public_rt: "RouteTableHandler", private_rt: "RouteTableHandler"
+        self, public_rt: RouteTableHandler, private_rt: RouteTableHandler
     ):
         try:
             peering = VpcPeeringHandler.get_active_by_reservation_id(
@@ -246,7 +248,7 @@ class PrepareCloudInfraDynamicStrategy(PrepareCloudInfraAbsStrategy):
         for rt in (public_rt, private_rt):
             rt.add_route_to_peering(peering.id, mgmt_vpc.cidr_block)
 
-    def set_sg_rules(self, isolated_sg: "SecurityGroup", default_sg: "SecurityGroup"):
+    def set_sg_rules(self, isolated_sg: SecurityGroup, default_sg: SecurityGroup):
         self._security_group_service.set_isolated_security_group_rules(
             isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=True
         )
@@ -262,7 +264,7 @@ class PrepareCloudInfraStaticStrategy(PrepareCloudInfraAbsStrategy):
     def _get_vpc_cidr(self) -> str:
         return self._aws_model.static_vpc_cidr
 
-    def _get_or_create_vpc(self) -> "Vpc":
+    def _get_or_create_vpc(self) -> Vpc:
         return self._vpc_service.get_or_create_vpc_for_reservation(
             self._reservation,
             self._aws_clients.ec2_session,
@@ -270,21 +272,21 @@ class PrepareCloudInfraStaticStrategy(PrepareCloudInfraAbsStrategy):
             self._logger,
         )
 
-    def get_or_create_igw(self) -> "InternetGateway":
+    def get_or_create_igw(self) -> InternetGateway:
         return self._vpc_service.get_or_create_igw(
             self._aws_clients.ec2_session, self.vpc, self._reservation, self._logger
         )
 
-    def get_or_create_public_rt(self) -> "RouteTableHandler":
+    def get_or_create_public_rt(self) -> RouteTableHandler:
         self._logger.info(f"Getting a main route table for the VPC '{self.vpc_name}'")
         return RouteTableHandler.get_main_rt(self.vpc, self._reservation)
 
     def connect_vpc_to_mgmt_vpc(
-        self, public_rt: "RouteTableHandler", private_rt: "RouteTableHandler"
+        self, public_rt: RouteTableHandler, private_rt: RouteTableHandler
     ):
         self._logger.info("In Static VPC mode we do not create peering to MGMT VPC")
 
-    def set_sg_rules(self, isolated_sg: "SecurityGroup", default_sg: "SecurityGroup"):
+    def set_sg_rules(self, isolated_sg: SecurityGroup, default_sg: SecurityGroup):
         self._security_group_service.set_isolated_security_group_rules(
             isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=False
         )
@@ -297,21 +299,21 @@ class PrepareCloudInfraStaticStrategy(PrepareCloudInfraAbsStrategy):
 
 
 class PrepareCloudInfraSharedStrategy(PrepareCloudInfraAbsStrategy):
-    def _get_or_create_vpc(self) -> "Vpc":
+    def _get_or_create_vpc(self) -> Vpc:
         return self._vpc_service.get_vpc_by_id(
             self._aws_clients.ec2_session, self._aws_model.shared_vpc_id
         )
 
-    def get_or_create_igw(self) -> Optional["InternetGateway"]:
+    def get_or_create_igw(self) -> InternetGateway | None:
         return self._vpc_service.get_first_igw(self.vpc)
 
-    def get_or_create_public_rt(self) -> "RouteTableHandler":
+    def get_or_create_public_rt(self) -> RouteTableHandler:
         return RouteTableHandler.get_or_create_public_rt(
             self.vpc, self._reservation, self._logger
         )
 
     def connect_vpc_to_mgmt_vpc(
-        self, public_rt: "RouteTableHandler", private_rt: "RouteTableHandler"
+        self, public_rt: RouteTableHandler, private_rt: RouteTableHandler
     ):
         mgmt_vpc = self._vpc_service.get_vpc_by_id(
             self._aws_clients.default_ec2_session, self._aws_model.aws_mgmt_vpc_id
@@ -325,7 +327,7 @@ class PrepareCloudInfraSharedStrategy(PrepareCloudInfraAbsStrategy):
         for route_table in (public_rt, private_rt):
             route_table.add_routes_to_tgw(self._aws_model.tgw_id, cidr_blocks)
 
-    def set_sg_rules(self, isolated_sg: "SecurityGroup", default_sg: "SecurityGroup"):
+    def set_sg_rules(self, isolated_sg: SecurityGroup, default_sg: SecurityGroup):
         self._security_group_service.set_isolated_security_group_rules(
             isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=False
         )
@@ -347,25 +349,71 @@ class PrepareCloudInfraSharedStrategy(PrepareCloudInfraAbsStrategy):
 
 
 class PrepareCloudInfraSingleStrategy(PrepareCloudInfraAbsStrategy):
-    def _get_or_create_vpc(self) -> "Vpc":
+    def _get_or_create_vpc(self) -> Vpc:
         return self._vpc_service.get_vpc_by_id(
             self._aws_clients.ec2_session, self._aws_model.aws_mgmt_vpc_id
         )
 
-    def get_or_create_igw(self) -> Optional["InternetGateway"]:
+    def get_or_create_igw(self) -> InternetGateway | None:
         return self._vpc_service.get_first_igw(self.vpc)
 
-    def get_or_create_public_rt(self) -> "RouteTableHandler":
+    def get_or_create_public_rt(self) -> RouteTableHandler:
         return RouteTableHandler.get_or_create_public_rt(
             self.vpc, self._reservation, self._logger
         )
 
     def connect_vpc_to_mgmt_vpc(
-        self, public_rt: "RouteTableHandler", private_rt: "RouteTableHandler"
+        self, public_rt: RouteTableHandler, private_rt: RouteTableHandler
     ):
         pass
 
-    def set_sg_rules(self, isolated_sg: "SecurityGroup", default_sg: "SecurityGroup"):
+    def set_sg_rules(self, isolated_sg: SecurityGroup, default_sg: SecurityGroup):
+        self._security_group_service.set_isolated_security_group_rules(
+            isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=False
+        )
+        self._security_group_service.set_shared_reservation_security_group_rules(
+            security_group=default_sg,
+            management_sg_id=self._aws_model.aws_mgmt_sg_id,
+            isolated_sg=isolated_sg,
+            need_management_sg=False,
+        )
+
+        inbound_ports = [
+            PortData(from_port="-1", to_port="-1", protocol="-1", destination=cidr)
+            for cidr in self._aws_model.additional_mgmt_networks
+        ]
+        for sg in (isolated_sg, default_sg):
+            self._security_group_service.set_security_group_rules(
+                sg, inbound_ports, logger=self._logger
+            )
+
+
+class PrepareCloudInfraSpecificSubnetStrategy(PrepareCloudInfraAbsStrategy):
+    def _get_or_create_vpc(self) -> Vpc:
+        return self._vpc_service.get_vpc_by_id(
+            self._aws_clients.ec2_session, self._aws_model.shared_vpc_id
+        )
+
+    def get_or_create_igw(self) -> InternetGateway | None:
+        return None
+
+    def get_or_create_public_rt(self) -> RouteTableHandler:
+        return None
+
+    def get_or_create_private_rt(self) -> RouteTableHandler:
+        return None
+
+    def add_route_to_igw(
+        self, public_rt: RouteTableHandler, igw: InternetGateway | None
+    ):
+        pass
+
+    def connect_vpc_to_mgmt_vpc(
+            self, public_rt: RouteTableHandler, private_rt: RouteTableHandler
+    ):
+        pass
+
+    def set_sg_rules(self, isolated_sg: SecurityGroup, default_sg: SecurityGroup):
         self._security_group_service.set_isolated_security_group_rules(
             isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=False
         )
@@ -395,17 +443,25 @@ STRATEGIES = {
 
 
 def get_prepare_infra_strategy(
-    vpc_service: "VPCService",
-    security_group_service: "SecurityGroupService",
-    aws_clients: "AwsApiClients",
-    aws_model: "AWSEc2CloudProviderResourceModel",
-    reservation: "ReservationModel",
-    network_action: "PrepareCloudInfra",
-    cancellation_context: "CancellationContext",
-    logger: "Logger",
+    vpc_service: VPCService,
+    security_group_service: SecurityGroupService,
+    aws_clients: AwsApiClients,
+    aws_model: AWSEc2CloudProviderResourceModel,
+    reservation: ReservationModel,
+    network_action: PrepareCloudInfra,
+    cancellation_context: CancellationContext,
+    logger: Logger,
+    subnet_id: str | None = None,
 ) -> PrepareCloudInfraAbsStrategy:
+    if subnet_id:
+        subnet = list(aws_clients.ec2_session.subnets.filter(SubnetIds=[subnet_id]))[0]
+        aws_model.shared_vpc_id = subnet.vpc_id
+        strategy_class = PrepareCloudInfraSpecificSubnetStrategy
+    else:
+        strategy_class = STRATEGIES[aws_model.vpc_mode]
+
     # noinspection PyArgumentList
-    return STRATEGIES[aws_model.vpc_mode](  # pycharm fails to get correct params
+    return strategy_class(  # pycharm fails to get correct params
         vpc_service,
         security_group_service,
         aws_clients,

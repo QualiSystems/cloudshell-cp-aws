@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, List
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import attr
 import jsonpickle
@@ -47,21 +49,21 @@ if TYPE_CHECKING:
 
 @attr.s(auto_attribs=True)
 class PrepareSandboxInfraOperation:
-    vpc_service: "VPCService"
-    security_group_service: "SecurityGroupService"
-    key_pair_service: "KeyPairService"
-    subnet_service: "SubnetService"
-    subnet_waiter: "SubnetWaiter"
+    vpc_service: VPCService
+    security_group_service: SecurityGroupService
+    key_pair_service: KeyPairService
+    subnet_service: SubnetService
+    subnet_waiter: SubnetWaiter
 
     def prepare_connectivity(
         self,
-        aws_clients: "AwsApiClients",
-        reservation: "ReservationModel",
-        aws_model: "AWSEc2CloudProviderResourceModel",
-        actions: List["RequestActionBase"],
-        cancellation_context: "CancellationContext",
-        cs_subnet_service: "CsSubnetService",
-        logger: "Logger",
+        aws_clients: AwsApiClients,
+        reservation: ReservationModel,
+        aws_model: AWSEc2CloudProviderResourceModel,
+        actions: list[RequestActionBase],
+        cancellation_context: CancellationContext,
+        cs_subnet_service: CsSubnetService,
+        logger: Logger,
     ):
         actions_str = ",".join([jsonpickle.encode(a) for a in actions])
         logger.info(f"PrepareSandboxInfra actions: {actions_str}")
@@ -74,11 +76,13 @@ class PrepareSandboxInfraOperation:
         create_keys_action = next(
             (a for a in actions if isinstance(a, CreateKeys)), None
         )
+        subnet_actions = [a for a in actions if isinstance(a, PrepareSubnet)]
         if not network_action:
             raise ValueError("Actions list must contain a PrepareCloudInfraAction.")
         if not create_keys_action:
             raise ValueError("Actions list must contain a CreateKeys.")
 
+        subnet_attrs = subnet_actions[0].actionParams.subnetServiceAttributes or {}
         try:
             result = self._prepare_network(
                 aws_clients,
@@ -87,6 +91,7 @@ class PrepareSandboxInfraOperation:
                 network_action,
                 cancellation_context,
                 logger,
+                subnet_attrs.get("Subnet Id"),
             )
             results.append(result)
         except Exception as e:
@@ -107,7 +112,6 @@ class PrepareSandboxInfraOperation:
             results.append(self._create_fault_action_result(create_keys_action, e))
 
         # Execute prepareSubnet actions
-        subnet_actions = [a for a in actions if isinstance(a, PrepareSubnet)]
         try:
             subnet_results = self._prepare_subnets(
                 cs_subnet_service,
@@ -129,11 +133,11 @@ class PrepareSandboxInfraOperation:
 
     def _prepare_key(
         self,
-        aws_clients: "AwsApiClients",
-        aws_model: "AWSEc2CloudProviderResourceModel",
-        reservation: "ReservationModel",
-        action: "CreateKeys",
-        logger: "Logger",
+        aws_clients: AwsApiClients,
+        aws_model: AWSEc2CloudProviderResourceModel,
+        reservation: ReservationModel,
+        action: CreateKeys,
+        logger: Logger,
     ):
         logger.info("Get or create existing key pair")
         access_key = self._get_or_create_key_pair(
@@ -146,13 +150,14 @@ class PrepareSandboxInfraOperation:
 
     def _prepare_network(
         self,
-        aws_clients: "AwsApiClients",
-        reservation: "ReservationModel",
-        aws_model: "AWSEc2CloudProviderResourceModel",
-        action: "PrepareCloudInfra",
-        cancellation_context: "CancellationContext",
-        logger: "Logger",
-    ) -> "PrepareCloudInfraResult":
+        aws_clients: AwsApiClients,
+        reservation: ReservationModel,
+        aws_model: AWSEc2CloudProviderResourceModel,
+        action: PrepareCloudInfra,
+        cancellation_context: CancellationContext,
+        logger: Logger,
+        subnet_id: str | None = None
+    ) -> PrepareCloudInfraResult:
         strategy = get_prepare_infra_strategy(
             self.vpc_service,
             self.security_group_service,
@@ -162,13 +167,14 @@ class PrepareSandboxInfraOperation:
             action,
             cancellation_context,
             logger,
+            subnet_id,
         )
         return strategy.prepare()
 
     def _get_or_create_key_pair(
         self,
-        ec2_session: "EC2ServiceResource",
-        s3_session: "S3ServiceResource",
+        ec2_session: EC2ServiceResource,
+        s3_session: S3ServiceResource,
         bucket: str,
         reservation_id: str,
     ) -> str:
@@ -189,14 +195,14 @@ class PrepareSandboxInfraOperation:
 
     def _prepare_subnets(
         self,
-        cs_subnet_service: "CsSubnetService",
-        subnet_actions: List["PrepareSubnet"],
-        aws_clients: "AwsApiClients",
-        aws_models: "AWSEc2CloudProviderResourceModel",
-        reservation: "ReservationModel",
-        cancellation_context: "CancellationContext",
-        logger: "Logger",
-    ) -> List["PrepareCloudInfraResult"]:
+        cs_subnet_service: CsSubnetService,
+        subnet_actions: list[PrepareSubnet],
+        aws_clients: AwsApiClients,
+        aws_models: AWSEc2CloudProviderResourceModel,
+        reservation: ReservationModel,
+        cancellation_context: CancellationContext,
+        logger: Logger,
+    ) -> list[PrepareCloudInfraResult]:
         strategy = get_prepare_subnet_strategy(
             self.vpc_service,
             self.subnet_service,
