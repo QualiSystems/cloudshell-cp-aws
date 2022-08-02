@@ -375,6 +375,37 @@ class PrepareSubnetsSingleStrategy(PrepareSubnetsAbsStrategy):
             self._sg_service.set_subnet_sg_rules(sg)
 
 
+class PrepareSubnetsSpecificSubnetStrategy(PrepareSubnetsAbsStrategy):
+    def _get_vpc(self):
+        return self._vpc_service.get_vpc_by_id(
+            self._aws_clients.ec2_session, self._aws_model.shared_vpc_id
+        )
+
+    def _set_subnet_cidr(self, item: "ActionItem", is_multi_subnet_mode: bool):
+        pass
+
+    def _attach_route_table(self, item: "ActionItem"):
+        pass
+
+    def _connect_to_vgw(self, item: "ActionItem"):
+        pass
+
+    def _create_sg_for_subnet(self, item: "ActionItem"):
+        pass
+
+    def prepare(self) -> List["PrepareCloudInfraResult"]:
+        action_items = list(map(ActionItem.from_action, self._subnet_actions))
+        for item in action_items:
+            subnet_attrs = item.action.actionParams.subnetServiceAttributes or {}
+            subnet_id = subnet_attrs.get("Subnet Id")
+            subnet = list(
+                self._aws_clients.ec2_session.subnets.filter(SubnetIds=[subnet_id])
+            )[0]
+            item.subnet = subnet
+
+        return list(map(self.create_result, action_items))
+
+
 STRATEGIES = {
     VpcMode.DYNAMIC: PrepareSubnetsDynamicStrategy,
     VpcMode.STATIC: PrepareSubnetsStaticStrategy,
@@ -396,8 +427,14 @@ def get_prepare_subnet_strategy(
     cancellation_context: "CancellationContext",
     logger: "Logger",
 ) -> PrepareSubnetsAbsStrategy:
+    subnet_attrs = subnet_actions[0].actionParams.subnetServiceAttributes or {}
+    if subnet_attrs.get("Subnet Id"):
+        strategy_class = PrepareSubnetsSpecificSubnetStrategy
+    else:
+        strategy_class = STRATEGIES[aws_model.vpc_mode]
+
     # noinspection PyArgumentList
-    return STRATEGIES[aws_model.vpc_mode](  # pycharm fails to get correct params
+    return strategy_class(  # pycharm fails to get correct params
         vpc_service,
         subnet_service,
         subnet_waiter,
