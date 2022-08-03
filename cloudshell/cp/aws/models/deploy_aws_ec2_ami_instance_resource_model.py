@@ -76,6 +76,7 @@ class DeployAWSEc2AMIInstanceResourceModel:
         self.private_ip_addresses_dict = self._get_private_ip_addresses_dict(
             private_ip_att_value
         )
+        self.static_sg_id = get_attr("Static Security Group Id")
 
     def _get_private_ip_addresses_dict(self, private_ip_address):
         try:

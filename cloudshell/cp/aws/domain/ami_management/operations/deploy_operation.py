@@ -593,6 +593,9 @@ class DeployAMIOperation:
             vpc,
             ami_deployment_model.allow_all_sandbox_traffic,
         )
+        if ami_deployment_model.static_sg_id:
+            security_group_ids.append(ami_deployment_model.static_sg_id)
+
         aws_model.security_group_ids = security_group_ids
 
         aws_model.network_interfaces = self._prepare_network_interfaces(
