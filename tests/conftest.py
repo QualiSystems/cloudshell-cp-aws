@@ -2,9 +2,9 @@ import pytest
 
 from cloudshell.shell.core.driver_context import ReservationContextDetails
 
-from cloudshell.cp.aws.models.reservation_model import ReservationModel
+from .base import VpcTest
 
-from tests.base import VpcTest
+from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
 @pytest.fixture()

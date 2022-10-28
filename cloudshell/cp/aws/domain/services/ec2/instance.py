@@ -6,8 +6,8 @@ from cloudshell.cp.aws.models.reservation_model import ReservationModel
 if TYPE_CHECKING:
     from logging import Logger
 
-    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
-    from mypy_boto3_ec2.service_resource import Instance, Vpc
+    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource  # noqa: I900
+    from mypy_boto3_ec2.service_resource import Instance, Vpc  # noqa: I900
 
     from cloudshell.shell.core.driver_context import CancellationContext
 

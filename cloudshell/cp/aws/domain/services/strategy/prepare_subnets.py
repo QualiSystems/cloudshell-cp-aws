@@ -21,7 +21,7 @@ from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMo
 if TYPE_CHECKING:
     from logging import Logger
 
-    from mypy_boto3_ec2.service_resource import Subnet, Vpc
+    from mypy_boto3_ec2.service_resource import Subnet, Vpc  # noqa: I900  # noqa: I900
 
     from cloudshell.cp.core.models import PrepareSubnet
     from cloudshell.shell.core.driver_context import CancellationContext

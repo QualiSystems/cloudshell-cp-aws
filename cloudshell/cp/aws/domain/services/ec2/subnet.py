@@ -4,7 +4,7 @@ from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
 from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2.service_resource import Subnet, Vpc
+    from mypy_boto3_ec2.service_resource import Subnet, Vpc  # noqa: I900
 
 
 def get_subnet_reservation_name(subnet_alias: str, reservation_id: str) -> str:

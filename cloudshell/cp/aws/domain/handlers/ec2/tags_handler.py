@@ -8,7 +8,7 @@ from retrying import retry
 from cloudshell.cp.aws.common.exceptions import BaseAwsException
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2.type_defs import TagTypeDef
+    from mypy_boto3_ec2.type_defs import TagTypeDef  # noqa: I900
 
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
 

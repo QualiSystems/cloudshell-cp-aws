@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2 import EC2Client
+    from mypy_boto3_ec2 import EC2Client  # noqa: I900
 
 
 def get_transit_gateway_cidr_blocks(ec2_client: "EC2Client", tgw_id: str) -> List[str]:

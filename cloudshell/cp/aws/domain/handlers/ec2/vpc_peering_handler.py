@@ -11,8 +11,8 @@ from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
 if TYPE_CHECKING:
     from logging import Logger
 
-    from mypy_boto3_ec2 import EC2ServiceResource
-    from mypy_boto3_ec2.service_resource import Vpc, VpcPeeringConnection
+    from mypy_boto3_ec2 import EC2ServiceResource  # noqa: I900
+    from mypy_boto3_ec2.service_resource import Vpc, VpcPeeringConnection  # noqa: I900
 
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
