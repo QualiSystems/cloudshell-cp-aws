@@ -10,7 +10,7 @@ from cloudshell.cp.aws.common.cached_property import cached_property
 from cloudshell.cp.aws.common.exceptions import BaseAwsException
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2.service_resource import Vpc
+    from mypy_boto3_ec2.service_resource import Vpc  # noqa: I900
 
 
 class CidrError(BaseAwsException):

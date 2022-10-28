@@ -1,5 +1,7 @@
 import pytest
 
+from ..base import RouteTableTest
+
 from cloudshell.cp.aws.domain.handlers.ec2 import (
     RouteTableHandler,
     RouteTableNotFound,
@@ -10,8 +12,6 @@ from cloudshell.cp.aws.domain.handlers.ec2.route_table_handler import (
     get_private_rt_name,
     get_public_rt_name,
 )
-
-from tests.base import RouteTableTest
 
 
 def test_get_main_rt(vpc, reservation):

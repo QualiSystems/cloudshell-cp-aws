@@ -5,7 +5,7 @@ import attr
 from cloudshell.cp.aws.common.cached_property import cached_property
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2.service_resource import Route
+    from mypy_boto3_ec2.service_resource import Route  # noqa: I900
 
 
 @attr.s(auto_attribs=True)

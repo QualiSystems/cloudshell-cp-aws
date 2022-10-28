@@ -11,7 +11,7 @@ from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMo
 if TYPE_CHECKING:
     from logging import Logger
 
-    from mypy_boto3_ec2.service_resource import Vpc
+    from mypy_boto3_ec2.service_resource import Vpc  # noqa: I900
 
     from cloudshell.cp.aws.domain.services.ec2.keypair import KeyPairService
     from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService

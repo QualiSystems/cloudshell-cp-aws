@@ -23,4 +23,9 @@ repos:
           flake8-comprehensions,
           flake8-print,
           flake8-eradicate,
+          flake8-requirements-absolute-imports,
+        ]
+        args: [
+          --project-base-module=cloudshell.cp.aws,
+          "--known-modules=cloudshell-cp-core:[cloudshell.cp.core],cloudshell-shell-standards:[cloudshell.shell.standards],cloudshell-shell-connectivity-flow:[cloudshell.shell.flows.connectivity],cloudshell-shell-core:[cloudshell.shell.core],cloudshell-automation-api:[cloudshell.api],boto3:[botocore,boto3]"
         ]

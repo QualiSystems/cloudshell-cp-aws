@@ -26,7 +26,11 @@ from cloudshell.cp.aws.models.port_data import PortData
 if TYPE_CHECKING:
     from logging import Logger
 
-    from mypy_boto3_ec2.service_resource import InternetGateway, SecurityGroup, Vpc
+    from mypy_boto3_ec2.service_resource import (  # noqa: I900
+        InternetGateway,
+        SecurityGroup,
+        Vpc,
+    )
 
     from cloudshell.cp.core.models import PrepareCloudInfra
     from cloudshell.shell.core.driver_context import CancellationContext
