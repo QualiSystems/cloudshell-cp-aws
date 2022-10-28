@@ -26,6 +26,13 @@ with open("requirements.txt") as f_required:
 with open("test_requirements.txt") as f_tests:
     required_for_tests = f_tests.read().splitlines()
 
+
+description = (
+    "A repository for projects providing out of the box capabilities within "
+    "CloudShell to define AWS instances in CloudShell and leverage Amazon Cloud "
+    "Computing capabilities to deploy and connect apps in CloudShell sandboxes."
+)
+
 setup(
     name="cloudshell-cp-aws",
     url="http://www.qualisystems.com/",
@@ -37,10 +44,7 @@ setup(
     python_requires="~=3.7",
     version=version_from_file,
     package_data={"": ["*.txt"]},
-    description=(
-        "A repository for projects providing out of the box capabilities within "
-        "CloudShell to define AWS instances in CloudShell and leverage Amazon Cloud "
-        "Computing capabilities to deploy and connect apps in CloudShell sandboxes."
-    ),
+    description=description,
+    long_description=description,
     include_package_data=True,
 )
