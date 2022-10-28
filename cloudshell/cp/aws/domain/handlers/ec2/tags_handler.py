@@ -134,7 +134,7 @@ class TagsHandler:
         try:
             self._add_tag_to_obj(aws_obj)
         except botocore.exceptions.ClientError as e:
-            if 'notfound' in str(e).lower():
+            if "notfound" in str(e).lower():
                 raise TagServiceCannotFindTheObject(aws_obj)
             else:
                 raise

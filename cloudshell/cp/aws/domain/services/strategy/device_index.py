@@ -29,9 +29,9 @@ class AllocateMissingValuesDeviceIndexStrategy(AbstractDeviceIndexStrategy):
         )
 
         # validate no duplicate device indexes
-        if len(
-            set(map(lambda x: x.actionParams.vnicName, specific_device_index_actions))
-        ) - len(specific_device_index_actions):
+        if len({a.actionParams.vnicName for a in specific_device_index_actions}) - len(
+            specific_device_index_actions
+        ):
             raise ValueError("Duplicate 'Requested vNic Name' attribute value found")
 
         # sort by device index
