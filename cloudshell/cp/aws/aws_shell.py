@@ -655,12 +655,12 @@ class AWSShell:
                 )
             )
 
-            tags = json.loads(request)
+            tags = TagsHandler.from_tags_list(json.loads(request))
 
             instance = self.instance_service.get_instance_by_id(
                 shell_context.aws_api.ec2_session, deployed_instance_id
             )
-            instance.create_tags(Tags=tags)
+            tags.add_tags_to_obj(instance)
 
     def create_traffic_mirroring(self, context, cancellation_context, request):
         """# noqa

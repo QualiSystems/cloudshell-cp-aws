@@ -2,6 +2,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 import attr
+import botocore
+from retrying import retry
+
+from cloudshell.cp.aws.common.exceptions import BaseAwsException
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2.type_defs import TagTypeDef
@@ -34,6 +38,19 @@ class TypeTagValue(Enum):
     ISOLATED = "Isolated"
     INBOUND_PORTS = "InboundPorts"
     INTERFACE = "Interface"
+
+
+class TagServiceCannotFindTheObject(BaseAwsException):
+    def __init__(self, aws_obj):
+        self.obj = aws_obj
+        super().__init__(f"Tag service cannot find the {aws_obj}")
+
+
+def tag_service_cannot_find_obj(exc) -> bool:
+    return (
+        isinstance(exc, botocore.exceptions.ClientError)
+        and "notfound" in str(exc).lower()
+    )
 
 
 @attr.s(auto_attribs=True, slots=True, frozen=True, str=False)
@@ -112,3 +129,24 @@ class TagsHandler:
         except ValueError:
             value = None
         return value
+
+    def add_tags_to_obj(self, aws_obj) -> None:
+        try:
+            self._add_tag_to_obj(aws_obj)
+        except botocore.exceptions.ClientError as e:
+            if 'notfound' in str(e).lower():
+                raise TagServiceCannotFindTheObject(aws_obj)
+            else:
+                raise
+
+    @retry(
+        wait_fixed=5 * 1000,
+        stop_max_delay=5 * 60 * 1000,
+        retry_on_exception=tag_service_cannot_find_obj,
+    )
+    def _add_tag_to_obj(self, aws_obj) -> None:
+        try:
+            aws_obj.create_tags(Tags=self.aws_tags)
+        except AttributeError:
+            ec2 = aws_obj.meta.client
+            ec2.create_tags(Resources=(aws_obj.id,), Tags=self.aws_tags)

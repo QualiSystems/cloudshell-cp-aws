@@ -200,7 +200,7 @@ class RouteTableHandler:
         self._aws_rt.delete()
 
     def add_tags(self, tags: "TagsHandler"):
-        self._aws_rt.create_tags(Tags=tags.aws_tags)
+        tags.add_tags_to_obj(self._aws_rt)
         self._update_tags()
 
     def find_route_to_gateway(

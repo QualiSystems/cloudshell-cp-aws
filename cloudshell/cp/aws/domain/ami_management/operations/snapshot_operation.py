@@ -1,6 +1,7 @@
 import copy
 import uuid
 
+from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
 from cloudshell.cp.aws.domain.services.ec2.instance import InstanceService
 from cloudshell.cp.aws.domain.services.waiters.ami import AMIWaiter
 
@@ -44,7 +45,8 @@ class SnapshotOperation:
 
         # prepare tags from the original image
         image_tags = self._prepare_tags(instance, image_name, deployed_app_name)
-        image.create_tags(Tags=image_tags)
+        tags = TagsHandler.from_tags_list(image_tags)
+        tags.add_tags_to_obj(image)
 
         # wait for the image to be ready
         logger.info("Waiting for the image to be ready")
@@ -167,6 +169,7 @@ class SnapshotOperation:
         instance = self.instance_service.get_instance_by_id(ec2_session, instance_id)
         root_device_volume_id = instance.block_device_mappings[0]["Ebs"]["VolumeId"]
         tags.append({"Key": "InstanceId", "Value": str(instance_id)})
+        tags_handler = TagsHandler.from_tags_list(tags)
 
         # Snapshot the Volume
         create_snapshot_result = ec2_client.create_snapshot(
@@ -175,7 +178,7 @@ class SnapshotOperation:
 
         # Wait for the snapshot to finish being created
         snapshot = ec2_session.Snapshot(create_snapshot_result["SnapshotId"])
-        snapshot.create_tags(tags)
+        tags_handler.add_tags_to_obj(snapshot)
         snapshot.wait_until_completed()
 
         return snapshot

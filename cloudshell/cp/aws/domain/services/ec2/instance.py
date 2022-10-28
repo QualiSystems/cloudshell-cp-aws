@@ -100,10 +100,10 @@ class InstanceService:
         new_name = f"{name} {instance.instance_id}"
         tags = TagsHandler.create_default_tags(new_name, reservation)
         tags.update_tags(custom_tags)
-        instance.create_tags(Tags=tags.aws_tags)
+        tags.add_tags_to_obj(instance)
 
         for volume in instance.volumes.all():
-            volume.create_tags(Tags=tags.aws_tags)
+            tags.add_tags_to_obj(volume)
 
     @staticmethod
     def get_instance_by_id(ec2_session, id):  # noqa: A002

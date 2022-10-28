@@ -133,7 +133,7 @@ class VPCService:
     @staticmethod
     def _set_tags(vpc_name: str, reservation: "ReservationModel", vpc: "Vpc"):
         tags = TagsHandler.create_default_tags(vpc_name, reservation)
-        vpc.create_tags(Tags=tags.aws_tags)
+        tags.add_tags_to_obj(vpc)
 
     def remove_all_internet_gateways(self, vpc: "Vpc"):
         """Removes all internet gateways from a VPC."""
@@ -160,7 +160,7 @@ class VPCService:
 
         igw_name = f"IGW {reservation.reservation_id}"
         tags = TagsHandler.create_default_tags(igw_name, reservation)
-        igw.create_tags(Tags=tags.aws_tags)
+        tags.add_tags_to_obj(igw)
 
         vpc.attach_internet_gateway(InternetGatewayId=igw.id)
         return igw

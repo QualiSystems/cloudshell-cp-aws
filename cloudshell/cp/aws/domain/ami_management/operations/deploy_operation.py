@@ -493,7 +493,7 @@ class DeployAMIOperation:
             IsolationTagValue.EXCLUSIVE,
             TypeTagValue.INBOUND_PORTS,
         )
-        self.security_group_service.add_tags(security_group, tags.aws_tags)
+        tags.add_tags_to_obj(security_group)
 
         self.security_group_service.set_security_group_rules(
             security_group=security_group,
