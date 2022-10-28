@@ -148,7 +148,7 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
                 IsolationTagValue.SHARED,
                 TypeTagValue.ISOLATED,
             )
-            self._security_group_service.add_tags(sg, tags.aws_tags)
+            tags.add_tags_to_obj(sg)
         return sg
 
     def create_default_sg(self) -> "SecurityGroup":
@@ -173,7 +173,7 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
                 IsolationTagValue.SHARED,
                 TypeTagValue.DEFAULT,
             )
-            self._security_group_service.add_tags(sg, tags.aws_tags)
+            tags.add_tags_to_obj(sg)
         return sg
 
     @abstractmethod

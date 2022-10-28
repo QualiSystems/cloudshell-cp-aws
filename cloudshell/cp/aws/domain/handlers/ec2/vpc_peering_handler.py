@@ -147,7 +147,7 @@ class VpcPeeringHandler:
 
         connection_name = get_connection_name(reservation.reservation_id)
         tags = TagsHandler.create_default_tags(connection_name, reservation)
-        inst.add_tags(ec2_session, tags)
+        inst.add_tags(tags)
 
         return inst
 
@@ -212,7 +212,6 @@ class VpcPeeringHandler:
     def accept_peering(self):
         self._vpc_peering.accept()
 
-    @retry(stop_max_attempt_number=30, wait_fixed=1000)
-    def add_tags(self, ec2_session: "EC2ServiceResource", tags: TagsHandler):
-        ec2_session.create_tags(Resources=(self._vpc_peering.id,), Tags=tags.aws_tags)
+    def add_tags(self, tags: TagsHandler):
+        tags.add_tags_to_obj(self._vpc_peering)
         self._update_tags()

@@ -183,7 +183,7 @@ class PrepareSubnetsAbsStrategy(metaclass=ABCMeta):
         )
         tags = TagsHandler.create_default_tags(subnet_name, self._reservation)
         tags.set_is_public_tag(item.action.actionParams.isPublic)
-        item.subnet.create_tags(Tags=tags.aws_tags)
+        tags.add_tags_to_obj(item.subnet)
 
     @subnet_step_wrapper
     def attach_route_table(self, item: "ActionItem"):
@@ -331,7 +331,7 @@ class PrepareSubnetsSharedStrategy(PrepareSubnetsAbsStrategy):
                 self._aws_clients.ec2_session, self.vpc.vpc_id, sg_name
             )
             tags = TagsHandler.create_default_tags(sg_name, self._reservation)
-            sg.create_tags(Tags=tags.aws_tags)
+            tags.add_tags_to_obj(sg)
             self._sg_service.set_subnet_sg_rules(sg)
 
 
@@ -371,7 +371,7 @@ class PrepareSubnetsSingleStrategy(PrepareSubnetsAbsStrategy):
                 self._aws_clients.ec2_session, self.vpc.vpc_id, sg_name
             )
             tags = TagsHandler.create_default_tags(sg_name, self._reservation)
-            sg.create_tags(Tags=tags.aws_tags)
+            tags.add_tags_to_obj(sg)
             self._sg_service.set_subnet_sg_rules(sg)
 
 
