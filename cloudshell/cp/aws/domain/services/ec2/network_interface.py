@@ -6,8 +6,8 @@ from cloudshell.cp.aws.common.retry_helper import retry_if_client_error
 from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import VpcMode
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource
-    from mypy_boto3_ec2.service_resource import SecurityGroup, Vpc
+    from mypy_boto3_ec2 import EC2Client, EC2ServiceResource  # noqa: I900
+    from mypy_boto3_ec2.service_resource import SecurityGroup, Vpc  # noqa: I900
 
     from cloudshell.cp.aws.domain.services.ec2.security_group import (
         SecurityGroupService,

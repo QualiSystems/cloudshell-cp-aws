@@ -23,8 +23,8 @@ from cloudshell.cp.aws.domain.services.strategy.prepare_subnets import (
 if TYPE_CHECKING:
     from logging import Logger
 
-    from mypy_boto3_ec2 import EC2ServiceResource
-    from mypy_boto3_s3 import S3ServiceResource
+    from mypy_boto3_ec2 import EC2ServiceResource  # noqa: I900
+    from mypy_boto3_s3 import S3ServiceResource  # noqa: I900
 
     from cloudshell.shell.core.driver_context import CancellationContext
 

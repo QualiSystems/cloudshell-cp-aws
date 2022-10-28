@@ -7,8 +7,8 @@ from retrying import retry
 if TYPE_CHECKING:
     from logging import Logger
 
-    from mypy_boto3_ec2 import EC2Client
-    from mypy_boto3_ec2.service_resource import Instance
+    from mypy_boto3_ec2 import EC2Client  # noqa: I900
+    from mypy_boto3_ec2.service_resource import Instance  # noqa: I900
 
     from cloudshell.shell.core.driver_context import CancellationContext
 

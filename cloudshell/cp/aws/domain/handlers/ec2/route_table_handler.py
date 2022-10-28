@@ -9,7 +9,7 @@ from .tags_handler import TagsHandler
 from cloudshell.cp.aws.common.cached_property import cached_property, invalidated_cache
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2.service_resource import RouteTable, Vpc
+    from mypy_boto3_ec2.service_resource import RouteTable, Vpc  # noqa: I900
 
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
