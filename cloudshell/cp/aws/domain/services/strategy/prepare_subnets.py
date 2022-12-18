@@ -8,6 +8,7 @@ from typing_extensions import Protocol
 from cloudshell.cp.core.models import PrepareCloudInfraResult
 
 from cloudshell.cp.aws.common.cached_property import cached_property
+from cloudshell.cp.aws.common.subnet_service import get_subnet_id
 from cloudshell.cp.aws.domain.common.cancellation_service import check_if_cancelled
 from cloudshell.cp.aws.domain.handlers.ec2 import RouteTableHandler, TagsHandler
 from cloudshell.cp.aws.domain.handlers.ec2.cidr_block_handler import (
@@ -375,11 +376,21 @@ class PrepareSubnetsSingleStrategy(PrepareSubnetsAbsStrategy):
             self._sg_service.set_subnet_sg_rules(sg)
 
 
-class PrepareSubnetsSpecificSubnetStrategy(PrepareSubnetsAbsStrategy):
+class PrepareSubnetsPredefinedNetworkingStrategy(PrepareSubnetsAbsStrategy):
+    def prepare(self) -> List["PrepareCloudInfraResult"]:
+        # we do not create subnets, add tags or route tables
+        action_items = list(map(ActionItem.from_action, self._subnet_actions))
+        for item in action_items:
+            subnet_id = get_subnet_id(item.action)
+            subnet = list(
+                self._aws_clients.ec2_session.subnets.filter(SubnetIds=[subnet_id])
+            )[0]
+            item.subnet = subnet
+
+        return list(map(self.create_result, action_items))
+
     def _get_vpc(self):
-        return self._vpc_service.get_vpc_by_id(
-            self._aws_clients.ec2_session, self._aws_model.shared_vpc_id
-        )
+        pass
 
     def _set_subnet_cidr(self, item: "ActionItem", is_multi_subnet_mode: bool):
         pass
@@ -393,24 +404,13 @@ class PrepareSubnetsSpecificSubnetStrategy(PrepareSubnetsAbsStrategy):
     def _create_sg_for_subnet(self, item: "ActionItem"):
         pass
 
-    def prepare(self) -> List["PrepareCloudInfraResult"]:
-        action_items = list(map(ActionItem.from_action, self._subnet_actions))
-        for item in action_items:
-            subnet_attrs = item.action.actionParams.subnetServiceAttributes or {}
-            subnet_id = subnet_attrs.get("Subnet Id")
-            subnet = list(
-                self._aws_clients.ec2_session.subnets.filter(SubnetIds=[subnet_id])
-            )[0]
-            item.subnet = subnet
-
-        return list(map(self.create_result, action_items))
-
 
 STRATEGIES = {
     VpcMode.DYNAMIC: PrepareSubnetsDynamicStrategy,
     VpcMode.STATIC: PrepareSubnetsStaticStrategy,
     VpcMode.SHARED: PrepareSubnetsSharedStrategy,
     VpcMode.SINGLE: PrepareSubnetsSingleStrategy,
+    VpcMode.PREDEFINED: PrepareSubnetsPredefinedNetworkingStrategy,
 }
 
 
@@ -427,12 +427,7 @@ def get_prepare_subnet_strategy(
     cancellation_context: "CancellationContext",
     logger: "Logger",
 ) -> PrepareSubnetsAbsStrategy:
-    subnet_attrs = subnet_actions[0].actionParams.subnetServiceAttributes or {}
-    if subnet_attrs.get("Subnet Id"):
-        strategy_class = PrepareSubnetsSpecificSubnetStrategy
-    else:
-        strategy_class = STRATEGIES[aws_model.vpc_mode]
-
+    strategy_class = STRATEGIES[aws_model.vpc_mode]
     # noinspection PyArgumentList
     return strategy_class(  # pycharm fails to get correct params
         vpc_service,

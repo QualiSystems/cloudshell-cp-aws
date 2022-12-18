@@ -20,6 +20,7 @@ class VpcMode(Enum):
     STATIC = "Static"
     SHARED = "Shared"
     SINGLE = "Single"
+    PREDEFINED = "Predefined networking"
 
 
 @dataclass
@@ -74,6 +75,10 @@ class AWSEc2CloudProviderResourceModel:
     def _validate_role_arn(self):
         if self.vpc_mode is VpcMode.SHARED and not self.shared_vpc_role_arn:
             raise ValueError("You should specify Role Arn for the Shared VPC mode.")
+        if self.vpc_mode is VpcMode.PREDEFINED and not self.shared_vpc_role_arn:
+            raise ValueError(
+                "You should specify Role Arn for the Predefined Networking mode."
+            )
 
     def _validate_static_cidr(self):
         if self.vpc_mode is VpcMode.STATIC and not self.static_vpc_cidr:

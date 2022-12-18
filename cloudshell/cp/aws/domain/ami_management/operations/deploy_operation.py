@@ -12,6 +12,7 @@ from cloudshell.cp.core.models import (
 from cloudshell.cp.core.utils import convert_dict_to_attributes_list
 
 from cloudshell.cp.aws.common import retry_helper
+from cloudshell.cp.aws.common.subnet_service import get_subnet_id
 from cloudshell.cp.aws.domain.common.cancellation_service import check_if_cancelled
 from cloudshell.cp.aws.domain.common.list_helper import first_or_default
 from cloudshell.cp.aws.domain.handlers.ec2 import (
@@ -120,17 +121,13 @@ class DeployAMIOperation:
         ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel" = (  # noqa
             ami_deploy_action.actionParams.deployment.customModel
         )
-        if network_actions:
-            subnet_id = network_actions[0].actionParams.subnetId
-            subnet = list(ec2_session.subnets.filter(SubnetIds=[subnet_id]))[0]
-            vpc = subnet.vpc
-        else:
-            vpc = self._get_vpc(
-                ec2_session,
-                aws_ec2_cp_resource_model,
-                reservation.reservation_id,
-                logger,
-            )
+        vpc = self._get_vpc(
+            ec2_session,
+            aws_ec2_cp_resource_model,
+            reservation.reservation_id,
+            logger,
+            network_actions,
+        )
         key_name = self.key_pair_service.get_reservation_key_name(
             reservation_id=reservation.reservation_id
         )
@@ -268,6 +265,7 @@ class DeployAMIOperation:
         aws_model: "AWSEc2CloudProviderResourceModel",
         reservation_id: str,
         logger: "Logger",
+        network_actions: list[ConnectSubnet]
     ) -> "Vpc":
         if aws_model.vpc_mode in (VpcMode.DYNAMIC, VpcMode.STATIC):
             logger.info(f"Getting the VPC for the reservation {reservation_id}")
@@ -278,6 +276,18 @@ class DeployAMIOperation:
         elif aws_model.vpc_mode is VpcMode.SINGLE:
             logger.info(f"Getting the VPC by the id {aws_model.aws_mgmt_vpc_id}")
             vpc = self.vpc_service.get_vpc_by_id(ec2_session, aws_model.aws_mgmt_vpc_id)
+        elif aws_model.vpc_mode is VpcMode.PREDEFINED:
+            subnet_ids = {a.actionParams.subnetId for a in network_actions}
+            subnet_ids = list(subnet_ids)
+            # # todo check that we receive all requested subnets
+            subnets = list(ec2_session.subnets.filter(SubnetIds=subnet_ids))
+            set_vpc = {s.vpc for s in subnets}
+            if len(set_vpc) > 1:
+                raise Exception(
+                    f"When using {VpcMode.PREDEFINED.value} VPC mode, VM can be "
+                    f"connected to subnets only from the same VPC."
+                )
+            vpc = next(iter(set_vpc))
         else:
             raise ValueError(f"VpcMode is wrong {aws_model.vpc_mode}")
 
@@ -587,12 +597,17 @@ class DeployAMIOperation:
         )
         aws_model.aws_key = key_pair
 
-        security_group_ids = self._get_security_group_param(
-            reservation,
-            security_group,
-            vpc,
-            ami_deployment_model.allow_all_sandbox_traffic,
-        )
+        if aws_ec2_resource_model.vpc_mode is VpcMode.PREDEFINED:
+            security_group_ids = []
+            if security_group:
+                security_group_ids.append(security_group.group_id)
+        else:
+            security_group_ids = self._get_security_group_param(
+                reservation,
+                security_group,
+                vpc,
+                ami_deployment_model.allow_all_sandbox_traffic,
+            )
         if ami_deployment_model.static_sg_id:
             security_group_ids.append(ami_deployment_model.static_sg_id)
 
