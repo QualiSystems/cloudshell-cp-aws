@@ -329,7 +329,15 @@ class CleanupSandboxInfraSingleVpcStrategy(CleanupSandboxInfraAbsStrategy):
         """In the Single VPC mode we do not create the VPC."""
 
 
-class CleanupSandboxInfraSpecificSubnetVpcStrategy(CleanupSandboxInfraAbsStrategy):
+class CleanupSandboxInfraPredefinedNetworkingStrategy(CleanupSandboxInfraAbsStrategy):
+    def cleanup(self):
+        # we remove only keys and instances
+        self.remove_keypair()
+        self.remove_security_groups()
+
+        if self._cleanup_exceptions:
+            raise CleanupSandboxInfraException(self._cleanup_exceptions)
+
     def get_vpc(self) -> "Vpc":
         pass
 
@@ -340,11 +348,7 @@ class CleanupSandboxInfraSpecificSubnetVpcStrategy(CleanupSandboxInfraAbsStrateg
         pass
 
     def _remove_security_groups(self):
-        sg_service = self._vpc_service.sg_service
-        sg_filter = {"Name": "tag:ReservationId", "Values": [self._reservation_id]}
-        sgs = self._aws_clients.ec2_session.security_groups.filter(Filters=[sg_filter])
-        for sg in sg_service.sort_sg_list(list(sgs)):
-            sg_service.delete_security_group(sg)
+        pass
 
     def _remove_subnets(self):
         pass
@@ -361,19 +365,13 @@ class CleanupSandboxInfraSpecificSubnetVpcStrategy(CleanupSandboxInfraAbsStrateg
     def _remove_vpc(self):
         pass
 
-    def cleanup(self):
-        self.remove_keypair()
-        self.remove_security_groups()
-
-        if self._cleanup_exceptions:
-            raise CleanupSandboxInfraException(self._cleanup_exceptions)
-
 
 STRATEGIES = {
     VpcMode.DYNAMIC: CleanupSandboxInfraDynamicVpcStrategy,
     VpcMode.STATIC: CleanupSandboxInfraStaticVpcStrategy,
     VpcMode.SHARED: CleanupSandboxInfraSharedVpcStrategy,
     VpcMode.SINGLE: CleanupSandboxInfraSingleVpcStrategy,
+    VpcMode.PREDEFINED: CleanupSandboxInfraPredefinedNetworkingStrategy,
 }
 
 
@@ -385,15 +383,7 @@ def get_strategy(
     reservation_id: "str",
     logger: "Logger",
 ) -> CleanupSandboxInfraAbsStrategy:
-    if (
-        aws_model.vpc_mode is VpcMode.DYNAMIC
-        and not vpc_service.find_vpc_for_reservation(
-            aws_clients.ec2_session, reservation_id
-        )
-    ):
-        strategy_class = CleanupSandboxInfraSpecificSubnetVpcStrategy
-    else:
-        strategy_class = STRATEGIES[aws_model.vpc_mode]
+    strategy_class = STRATEGIES[aws_model.vpc_mode]
     # noinspection PyArgumentList
     return strategy_class(  # pycharm fails to get correct params
         vpc_service,

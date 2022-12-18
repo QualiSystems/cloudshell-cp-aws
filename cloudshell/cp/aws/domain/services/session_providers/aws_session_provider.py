@@ -33,7 +33,7 @@ class AWSSessionProvider:
         if not default_session:
             raise ValueError("Could not create AWS Session")
 
-        if aws_ec2_data_model.vpc_mode is VpcMode.SHARED:
+        if aws_ec2_data_model.vpc_mode in (VpcMode.SHARED, VpcMode.PREDEFINED):
             aws_ec2_session = self._assume_shared_vpc_role(
                 default_session, aws_ec2_data_model
             )

@@ -195,7 +195,8 @@ class PrepareCloudInfraAbsStrategy(metaclass=ABCMeta):
             success=True,
             infoMessage="PrepareCloudInfra finished successfully",
         )
-        result.vpcId = self.vpc.id
+        if self.vpc:
+            result.vpcId = self.vpc.id
         result.securityGroupId = [sg.id for sg in security_groups]
         return result
 
@@ -388,24 +389,18 @@ class PrepareCloudInfraSingleStrategy(PrepareCloudInfraAbsStrategy):
             )
 
 
-class PrepareCloudInfraSpecificSubnetStrategy(PrepareCloudInfraAbsStrategy):
+class PrepareCloudInfraPredefinedNetworkingStrategy(PrepareCloudInfraAbsStrategy):
+    def prepare(self) -> PrepareCloudInfraResult:
+        # we do not create IGW, RTs, SGs and peering
+        return self.prepare_result([])
+
     def _get_or_create_vpc(self) -> Vpc:
-        return self._vpc_service.get_vpc_by_id(
-            self._aws_clients.ec2_session, self._aws_model.shared_vpc_id
-        )
+        pass
 
     def get_or_create_igw(self) -> InternetGateway | None:
-        return None
+        pass
 
     def get_or_create_public_rt(self) -> RouteTableHandler:
-        return None
-
-    def get_or_create_private_rt(self) -> RouteTableHandler:
-        return None
-
-    def add_route_to_igw(
-        self, public_rt: RouteTableHandler, igw: InternetGateway | None
-    ):
         pass
 
     def connect_vpc_to_mgmt_vpc(
@@ -414,24 +409,7 @@ class PrepareCloudInfraSpecificSubnetStrategy(PrepareCloudInfraAbsStrategy):
         pass
 
     def set_sg_rules(self, isolated_sg: SecurityGroup, default_sg: SecurityGroup):
-        self._security_group_service.set_isolated_security_group_rules(
-            isolated_sg, self._aws_model.aws_mgmt_sg_id, need_management_access=False
-        )
-        self._security_group_service.set_shared_reservation_security_group_rules(
-            security_group=default_sg,
-            management_sg_id=self._aws_model.aws_mgmt_sg_id,
-            isolated_sg=isolated_sg,
-            need_management_sg=False,
-        )
-
-        inbound_ports = [
-            PortData(from_port="-1", to_port="-1", protocol="-1", destination=cidr)
-            for cidr in self._aws_model.additional_mgmt_networks
-        ]
-        for sg in (isolated_sg, default_sg):
-            self._security_group_service.set_security_group_rules(
-                sg, inbound_ports, logger=self._logger
-            )
+        pass
 
 
 STRATEGIES = {
@@ -439,6 +417,7 @@ STRATEGIES = {
     VpcMode.STATIC: PrepareCloudInfraStaticStrategy,
     VpcMode.SHARED: PrepareCloudInfraSharedStrategy,
     VpcMode.SINGLE: PrepareCloudInfraSingleStrategy,
+    VpcMode.PREDEFINED: PrepareCloudInfraPredefinedNetworkingStrategy,
 }
 
 
@@ -451,14 +430,8 @@ def get_prepare_infra_strategy(
     network_action: PrepareCloudInfra,
     cancellation_context: CancellationContext,
     logger: Logger,
-    subnet_id: str | None = None,
 ) -> PrepareCloudInfraAbsStrategy:
-    if subnet_id:
-        subnet = list(aws_clients.ec2_session.subnets.filter(SubnetIds=[subnet_id]))[0]
-        aws_model.shared_vpc_id = subnet.vpc_id
-        strategy_class = PrepareCloudInfraSpecificSubnetStrategy
-    else:
-        strategy_class = STRATEGIES[aws_model.vpc_mode]
+    strategy_class = STRATEGIES[aws_model.vpc_mode]
 
     # noinspection PyArgumentList
     return strategy_class(  # pycharm fails to get correct params

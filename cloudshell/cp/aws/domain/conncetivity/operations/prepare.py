@@ -15,11 +15,16 @@ from cloudshell.cp.core.models import (
     RequestActionBase,
 )
 
+from cloudshell.cp.aws.common.subnet_service import get_subnet_id, SubnetServiceAttr
 from cloudshell.cp.aws.domain.services.strategy.prepare_cloud_infra import (
     get_prepare_infra_strategy,
 )
 from cloudshell.cp.aws.domain.services.strategy.prepare_subnets import (
     get_prepare_subnet_strategy,
+)
+from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
+    AWSEc2CloudProviderResourceModel,
+    VpcMode,
 )
 
 if TYPE_CHECKING:
@@ -41,9 +46,7 @@ if TYPE_CHECKING:
     from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
     from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
     from cloudshell.cp.aws.models.aws_api import AwsApiClients
-    from cloudshell.cp.aws.models.aws_ec2_cloud_provider_resource_model import (
-        AWSEc2CloudProviderResourceModel,
-    )
+
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 
@@ -81,8 +84,8 @@ class PrepareSandboxInfraOperation:
             raise ValueError("Actions list must contain a PrepareCloudInfraAction.")
         if not create_keys_action:
             raise ValueError("Actions list must contain a CreateKeys.")
+        self._validate_subnet_actions(subnet_actions, aws_model)
 
-        subnet_attrs = subnet_actions[0].actionParams.subnetServiceAttributes or {}
         try:
             result = self._prepare_network(
                 aws_clients,
@@ -91,7 +94,6 @@ class PrepareSandboxInfraOperation:
                 network_action,
                 cancellation_context,
                 logger,
-                subnet_attrs.get("Subnet Id"),
             )
             results.append(result)
         except Exception as e:
@@ -156,7 +158,6 @@ class PrepareSandboxInfraOperation:
         action: PrepareCloudInfra,
         cancellation_context: CancellationContext,
         logger: Logger,
-        subnet_id: str | None = None
     ) -> PrepareCloudInfraResult:
         strategy = get_prepare_infra_strategy(
             self.vpc_service,
@@ -167,7 +168,6 @@ class PrepareSandboxInfraOperation:
             action,
             cancellation_context,
             logger,
-            subnet_id,
         )
         return strategy.prepare()
 
@@ -235,3 +235,15 @@ class PrepareSandboxInfraOperation:
         action_result.success = False
         action_result.errorMessage = f"PrepareSandboxInfra ended with the error: {e}"
         return action_result
+
+    @staticmethod
+    def _validate_subnet_actions(
+        subnet_actions: list[PrepareSubnet],
+        aws_model: AWSEc2CloudProviderResourceModel,
+    ) -> None:
+        if aws_model.vpc_mode is VpcMode.PREDEFINED and not all(
+            map(get_subnet_id, subnet_actions)
+        ):
+            mode = aws_model.vpc_mode.PREDEFINED.value
+            attr_ = SubnetServiceAttr.SUBNET_ID.value
+            raise ValueError(f"In {mode} VPC mode, all subnets must have {attr_} set.")
