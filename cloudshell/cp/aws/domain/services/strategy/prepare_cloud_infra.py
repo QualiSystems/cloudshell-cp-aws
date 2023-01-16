@@ -404,7 +404,7 @@ class PrepareCloudInfraPredefinedNetworkingStrategy(PrepareCloudInfraAbsStrategy
         pass
 
     def connect_vpc_to_mgmt_vpc(
-            self, public_rt: RouteTableHandler, private_rt: RouteTableHandler
+        self, public_rt: RouteTableHandler, private_rt: RouteTableHandler
     ):
         pass
 

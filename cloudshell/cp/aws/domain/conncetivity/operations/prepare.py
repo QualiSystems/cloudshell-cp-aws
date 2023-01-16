@@ -15,7 +15,7 @@ from cloudshell.cp.core.models import (
     RequestActionBase,
 )
 
-from cloudshell.cp.aws.common.subnet_service import get_subnet_id, SubnetServiceAttr
+from cloudshell.cp.aws.common.subnet_service import SubnetServiceAttr, get_subnet_id
 from cloudshell.cp.aws.domain.services.strategy.prepare_cloud_infra import (
     get_prepare_infra_strategy,
 )
@@ -46,7 +46,6 @@ if TYPE_CHECKING:
     from cloudshell.cp.aws.domain.services.ec2.vpc import VPCService
     from cloudshell.cp.aws.domain.services.waiters.subnet import SubnetWaiter
     from cloudshell.cp.aws.models.aws_api import AwsApiClients
-
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
 

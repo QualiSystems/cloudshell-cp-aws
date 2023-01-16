@@ -37,8 +37,10 @@ class AWSSessionProvider:
             aws_ec2_session = self._assume_shared_vpc_role(
                 default_session, aws_ec2_data_model
             )
-        elif aws_ec2_data_model.vpc_mode == VpcMode.PREDEFINED \
-                and aws_ec2_data_model.shared_vpc_role_arn:
+        elif (
+            aws_ec2_data_model.vpc_mode == VpcMode.PREDEFINED
+            and aws_ec2_data_model.shared_vpc_role_arn
+        ):
             aws_ec2_session = self._assume_shared_vpc_role(
                 default_session, aws_ec2_data_model
             )

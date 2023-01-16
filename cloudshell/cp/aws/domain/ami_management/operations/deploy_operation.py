@@ -12,7 +12,6 @@ from cloudshell.cp.core.models import (
 from cloudshell.cp.core.utils import convert_dict_to_attributes_list
 
 from cloudshell.cp.aws.common import retry_helper
-from cloudshell.cp.aws.common.subnet_service import get_subnet_id
 from cloudshell.cp.aws.domain.common.cancellation_service import check_if_cancelled
 from cloudshell.cp.aws.domain.common.list_helper import first_or_default
 from cloudshell.cp.aws.domain.handlers.ec2 import (
@@ -265,7 +264,7 @@ class DeployAMIOperation:
         aws_model: "AWSEc2CloudProviderResourceModel",
         reservation_id: str,
         logger: "Logger",
-        network_actions: list[ConnectSubnet]
+        network_actions: list[ConnectSubnet],
     ) -> "Vpc":
         if aws_model.vpc_mode in (VpcMode.DYNAMIC, VpcMode.STATIC):
             logger.info(f"Getting the VPC for the reservation {reservation_id}")
