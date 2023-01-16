@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from botocore.exceptions import ClientError
 
 
-class ClientErrorWrapper(object):
+class ClientErrorWrapper:
     @contextmanager
     def wrap(self):
         try:
