@@ -952,13 +952,27 @@ class DeployAMIOperation:
             res = {r.split(":")[0]: r.split(":")[1] for r in tags_list}
         return res
 
-    def _get_user_data(self, user_data_url, user_data_run_parameters):
-        data = (
-            "#!/bin/bash\n"
-            + "curl --retry 10 --max-time 5 --retry-max-time 180 {}  > cs.sh \n".format(
-                user_data_url
-            )
-            + "chmod +x cs.sh \n"
-            + f"./cs.sh {user_data_run_parameters}"
-        )
+    def _get_user_data(self, user_data_url: str, user_data_run_parameters: str) -> str:
+        if user_data_url.endswith(".ps1"):
+            data = self._get_windows_user_data(user_data_url, user_data_run_parameters)
+        else:
+            data = self._get_linux_user_data(user_data_url, user_data_run_parameters)
         return data
+
+    @staticmethod
+    def _get_linux_user_data(url: str, params: str) -> str:
+        return (
+            f"#!/bin/bash\n"
+            f"curl --retry 10 --max-time 5 --retry-max-time 180 {url}  > cs.sh\n"
+            f"chmod +x cs.sh\n"
+            f"./cs.sh {params}"
+        )
+
+    @staticmethod
+    def _get_windows_user_data(url: str, params: str) -> str:
+        return (
+            f"<powershell>\n"
+            f"Invoke-WebRequest -Uri {url} -OutFile cs.ps1\n"
+            f"Invoke-Expression -Command cs.ps1 {params}\n"
+            f"</powershell>"
+        )
