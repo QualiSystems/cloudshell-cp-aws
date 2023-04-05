@@ -56,6 +56,7 @@ class TestSetAppSecurityGroupsOperation(TestCase):
             saved_sandbox_name="",
             saved_sandbox_id="",
             running_user="",
+            cloud_info_access_key="",
         )
         reservation_model = ReservationModel(reservation_context)
         return reservation_model
