@@ -16,7 +16,6 @@ class TestAwsResourceModelContext(TestCase):
         )
 
         with AwsResourceModelContext(context, model_parser) as aws_ec2_resource_model:
-
             model_parser.convert_to_aws_resource_model.assert_called_with(
                 context.resource
             )

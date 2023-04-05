@@ -35,7 +35,6 @@ class SubnetWaiter:
 
         start_time = time.time()
         while subnet.state != state:
-
             retry_helper.do_with_retry(lambda: subnet.reload())
 
             if time.time() - start_time >= self.timeout:
