@@ -28,7 +28,6 @@ class TestAWSSessionProvider(TestCase):
         self.aws_ec2_data_model.region = "region"
 
     def test_get_clients(self):
-
         aws_api = self.session_provider.get_clients(
             cloudshell_session=self.cloudshell_session,
             aws_ec2_data_model=self.aws_ec2_data_model,

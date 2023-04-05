@@ -7,7 +7,6 @@ from cloudshell.cp.aws.domain.services.ec2.subnet import SubnetService
 
 class TestSubnetService(TestCase):
     def setUp(self):
-
         self.vpc = Mock()
         self.cidr = "10.0.0.0/24"
         self.availability_zone = "a1"

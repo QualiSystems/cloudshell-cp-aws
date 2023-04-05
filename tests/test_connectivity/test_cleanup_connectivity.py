@@ -63,7 +63,7 @@ class TestCleanupSandboxInfra(TestCase):
     def test_cleanup_no_vpc(self):
         vpc_serv = Mock()
         vpc_serv.find_vpc_for_reservation = Mock(return_value=None)
-        result = CleanupSandboxInfraOperation(vpc_serv, self.key_pair_serv,).cleanup(
+        result = CleanupSandboxInfraOperation(vpc_serv, self.key_pair_serv).cleanup(
             aws_clients=self.aws_api_clients,
             aws_model=self.aws_model,
             reservation_id=self.reservation_id,

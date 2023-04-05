@@ -102,7 +102,6 @@ class TestCreateTrafficMirroring(TestCase):
         self.assertTrue([x for x in results if x.success])
 
     def test_json_validate(self):
-
         request = """
         {
             "driverRequest": {

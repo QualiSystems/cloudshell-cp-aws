@@ -19,7 +19,6 @@ class TestAwsApiContext(TestCase):
             cloudshell_session=cloudshell_session,
             aws_ec2_resource_model=aws_ec2_resource_model,
         ) as aws_api:
-
             aws_session_manager.get_clients.assert_called_with(
                 cloudshell_session=cloudshell_session,
                 aws_ec2_data_model=aws_ec2_resource_model,
