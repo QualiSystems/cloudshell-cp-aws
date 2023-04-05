@@ -25,5 +25,6 @@ def reservation():
         saved_sandbox_name="sandbox name",
         saved_sandbox_id="sandbox id",
         running_user="running user",
+        cloud_info_access_key="",
     )
     return ReservationModel(context)
