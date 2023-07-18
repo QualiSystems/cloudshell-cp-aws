@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import traceback
 import uuid
 from multiprocessing import TimeoutError
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from cloudshell.cp.core.models import (
     ConnectSubnet,
@@ -57,12 +59,12 @@ class DeployAMIOperation:
         instance_service,
         ami_credential_service,
         security_group_service,
-        vpc_service: "VPCService",
+        vpc_service: VPCService,
         key_pair_service,
         subnet_service,
         elastic_ip_service,
-        network_interface_service: "NetworkInterfaceService",
-        device_index_strategy: "AbstractDeviceIndexStrategy",
+        network_interface_service: NetworkInterfaceService,
+        device_index_strategy: AbstractDeviceIndexStrategy,
         vm_details_provider,
     ):
         """# noqa
@@ -117,7 +119,7 @@ class DeployAMIOperation:
         :return: Deploy Result
         :rtype: list[RequestActionBase]
         """
-        ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel" = (  # noqa
+        ami_deployment_model: DeployAWSEc2AMIInstanceResourceModel = (  # noqa
             ami_deploy_action.actionParams.deployment.customModel
         )
         vpc = self._get_vpc(
@@ -260,12 +262,12 @@ class DeployAMIOperation:
 
     def _get_vpc(
         self,
-        ec2_session: "EC2ServiceResource",
-        aws_model: "AWSEc2CloudProviderResourceModel",
+        ec2_session: EC2ServiceResource,
+        aws_model: AWSEc2CloudProviderResourceModel,
         reservation_id: str,
-        logger: "Logger",
+        logger: Logger,
         network_actions: list[ConnectSubnet],
-    ) -> "Vpc":
+    ) -> Vpc:
         if aws_model.vpc_mode in (VpcMode.DYNAMIC, VpcMode.STATIC):
             logger.info(f"Getting the VPC for the reservation {reservation_id}")
             vpc = self.vpc_service.get_vpc_for_reservation(ec2_session, reservation_id)
@@ -355,8 +357,8 @@ class DeployAMIOperation:
         )
 
     def _prepare_network_result_models(
-        self, network_actions: List[ConnectSubnet]
-    ) -> List[DeployNetworkingResultModel]:
+        self, network_actions: list[ConnectSubnet]
+    ) -> list[DeployNetworkingResultModel]:
         network_config_results = []
         if not network_actions:
             network_config_results.append(
@@ -468,7 +470,7 @@ class DeployAMIOperation:
 
     def _create_security_group_for_instance(
         self,
-        ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel",
+        ami_deployment_model: DeployAWSEc2AMIInstanceResourceModel,
         ec2_session,
         reservation,
         vpc,
@@ -636,15 +638,15 @@ class DeployAMIOperation:
 
     def _prepare_network_interfaces(
         self,
-        vpc: "Vpc",
-        ami_deployment_model: "DeployAWSEc2AMIInstanceResourceModel",
-        network_actions: List["ConnectSubnet"],
-        security_group_ids: List[str],
-        network_config_results: List[DeployNetworkingResultModel],
-        reservation: "ReservationModel",
-        aws_model: "AWSEc2CloudProviderResourceModel",
-        ec2_session: "EC2ServiceResource",
-        logger: "Logger",
+        vpc: Vpc,
+        ami_deployment_model: DeployAWSEc2AMIInstanceResourceModel,
+        network_actions: list[ConnectSubnet],
+        security_group_ids: list[str],
+        network_config_results: list[DeployNetworkingResultModel],
+        reservation: ReservationModel,
+        aws_model: AWSEc2CloudProviderResourceModel,
+        ec2_session: EC2ServiceResource,
+        logger: Logger,
     ):
         if not network_actions:
             logger.info("Single subnet mode detected")
