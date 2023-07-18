@@ -163,6 +163,11 @@ class TestModelParser(TestCase):
                 "attributeValue": "100",
                 "type": "attribute",
             },
+            {
+                "attributeName": f"{d_path}.Static Security Group Id",
+                "attributeValue": "",
+                "type": "attribute",
+            }
         ]
         json_str = json.dumps(
             {

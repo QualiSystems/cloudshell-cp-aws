@@ -500,6 +500,7 @@ class TestDeployOperation(TestCase):
         ami_model.storage_size = "0"
         ami_model.iam_role = ""
         ami_model.custom_tags = ""
+        ami_model.static_sg_id = ""
 
         network_actions = None
         vpc = Mock()

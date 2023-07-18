@@ -81,7 +81,7 @@ class DeployAWSEc2AMIInstanceResourceModel:
     def _get_private_ip_addresses_dict(self, private_ip_address):
         try:
             # if dict of private ip address then we take the first as the primary
-            return json.loads(private_ip_address)
+            return json.loads(private_ip_address.replace("'", '"'))
         except Exception:
             return None
 
