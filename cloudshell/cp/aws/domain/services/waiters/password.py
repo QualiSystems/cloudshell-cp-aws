@@ -1,9 +1,12 @@
+import os
 import time
 from multiprocessing import TimeoutError
 
 
 class PasswordWaiter:
-    def __init__(self, cancellation_service, delay=5, timeout=15):
+    TIMEOUT = int(os.getenv("QS_AWS_CRED_TIMEOUT", "15"))
+
+    def __init__(self, cancellation_service, delay=5, timeout=TIMEOUT):
         """# noqa
         :param delay: the time in seconds between each pull
         :type delay: int
