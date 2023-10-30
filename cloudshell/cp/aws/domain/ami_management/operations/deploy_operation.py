@@ -53,6 +53,7 @@ if TYPE_CHECKING:
 
 class DeployAMIOperation:
     MAX_IO1_IOPS = 20000
+    MAX_IO2_IOPS = 64000
 
     def __init__(
         self,
@@ -840,19 +841,18 @@ class DeployAMIOperation:
 
         # add iops if needed - storage_iops is required for requests to create io1
         # volumes only
-        if storage_type == "io1":
+        if storage_type in ("io1", "io2"):
             storage_iops = int(ami_deployment_model.storage_iops)
 
             if not storage_iops:
                 if "Iops" in root_device["Ebs"]:
                     storage_iops = int(root_device["Ebs"]["Iops"])
                 else:
-                    storage_iops = (
-                        self._suggested_iops(storage_size)
-                        if self._suggested_iops(storage_size) < self.MAX_IO1_IOPS
-                        else self.MAX_IO1_IOPS
-                    )
-
+                    max_iops = {
+                        "io1": self.MAX_IO1_IOPS,
+                        "io2": self.MAX_IO2_IOPS,
+                    }[storage_type]
+                    storage_iops = min(self._suggested_iops(storage_size), max_iops)
             if int(aws_ec2_resource_model.max_storage_iops) and storage_iops > int(
                 aws_ec2_resource_model.max_storage_iops
             ):
@@ -862,6 +862,11 @@ class DeployAMIOperation:
                 )
 
             block_device_mappings[0]["Ebs"]["Iops"] = int(storage_iops)
+
+        if ami_deployment_model.storage_encryption_key:
+            key = ami_deployment_model.storage_encryption_key
+            block_device_mappings[0]["Ebs"]["KmsKeyId"] = key
+            block_device_mappings[0]["Ebs"]["Encrypted"] = True
 
         return block_device_mappings
 

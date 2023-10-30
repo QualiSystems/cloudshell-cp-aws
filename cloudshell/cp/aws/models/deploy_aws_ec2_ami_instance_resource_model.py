@@ -19,7 +19,7 @@ class DeployAWSEc2AMIInstanceResourceModel:
         self.aws_ami_id = ""
         self.storage_size = ""
         self.storage_iops = ""
-        # the storage type can be one of these: 'standard'|'io1'|'gp2'|'sc1'|'st1'
+        # the storage type can be one of these: auto|standard|io1|io2|gp2|gp3|sc1|st1
         self.storage_type = ""  # type: str
         self.min_count = 0  # type: int
         self.max_count = 0  # type: int
@@ -49,6 +49,7 @@ class DeployAWSEc2AMIInstanceResourceModel:
         self.storage_size = get_attr("Storage Size")
         self.storage_iops = get_attr("Storage IOPS")
         self.storage_type = get_attr("Storage Type")
+        self.storage_encryption_key = get_attr("Storage Encryption Key")
         self.instance_type = get_attr("Instance Type")
         self.iam_role = get_attr("IAM Role Name")
         self.root_volume_name = get_attr("Root Volume Name")
