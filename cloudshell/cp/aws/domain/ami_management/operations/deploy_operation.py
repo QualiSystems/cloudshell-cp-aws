@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import traceback
 import uuid
-from multiprocessing import TimeoutError
+from multiprocessing import TimeoutError  # noqa: A004
 from typing import TYPE_CHECKING
 
 from cloudshell.cp.core.models import (
