@@ -76,6 +76,7 @@ class TestAWSShell(TestCase):
         self.aws_shell.deploy_ami_operation.deploy.assert_called_with(
             ec2_session=self.expected_shell_context.aws_api.ec2_session,
             s3_session=self.expected_shell_context.aws_api.s3_session,
+            iam_client=self.expected_shell_context.aws_api.iam_client,
             name=deploy_app.actionParams.appName,
             reservation=self.reservation_model,
             aws_ec2_cp_resource_model=self.expected_shell_context.aws_ec2_resource_model,  # noqa: E501
@@ -150,7 +151,9 @@ class TestAWSShell(TestCase):
             self.assertEqual(res, True)
 
     def test_delete_instance(self):
-        deployed_model = DeployDataHolder({"vmdetails": {"uid": "id"}})
+        deployed_model = DeployDataHolder(
+            {"name": "app_name", "vmdetails": {"uid": "id"}}
+        )
         remote_resource = Mock()
         remote_resource.fullname = "my ami name"
         self.command_context.remote_endpoints = [remote_resource]
@@ -168,7 +171,10 @@ class TestAWSShell(TestCase):
         self.aws_shell.delete_ami_operation.delete_instance.assert_called_with(
             logger=self.expected_shell_context.logger,
             ec2_session=self.expected_shell_context.aws_api.ec2_session,
+            iam_client=self.expected_shell_context.aws_api.iam_client,
             instance_id=deployed_model.vmdetails.uid,
+            vm_name=deployed_model.name,
+            reservation=self.reservation_model,
         )
 
     def test_power_on(self):

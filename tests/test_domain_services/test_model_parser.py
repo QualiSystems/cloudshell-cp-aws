@@ -247,6 +247,13 @@ class TestModelParser(TestCase):
         self.assertEqual(
             model.actionParams.deployment.customModel.status_check_timeout, 100
         )
+        self.assertFalse(model.actionParams.deployment.customModel.create_new_role)
+        self.assertEqual(
+            model.actionParams.deployment.customModel.policies_arns_for_new_role, []
+        )
+        self.assertEqual(
+            model.actionParams.deployment.customModel.storage_encryption_key, ""
+        )
 
     def test_convert_to_deployment_resource_model_with_network(self):
         json = (
