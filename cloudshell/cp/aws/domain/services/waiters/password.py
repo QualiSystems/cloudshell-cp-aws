@@ -1,6 +1,6 @@
 import os
 import time
-from multiprocessing import TimeoutError
+from multiprocessing import TimeoutError  # noqa: A004
 
 
 class PasswordWaiter:

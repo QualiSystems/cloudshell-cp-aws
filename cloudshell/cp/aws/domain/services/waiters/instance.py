@@ -1,5 +1,5 @@
 import time
-from multiprocessing import TimeoutError
+from multiprocessing import TimeoutError  # noqa: A004
 from typing import TYPE_CHECKING
 
 from retrying import retry
