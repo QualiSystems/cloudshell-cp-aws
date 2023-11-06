@@ -42,6 +42,9 @@ class DeployAWSEc2AMIInstanceResourceModel:
         self.allocate_elastic_ip = False  # type: bool
         self.network_configurations = None  # type: list["NetworkAction"]  # noqa
         self.allow_all_sandbox_traffic = True  # type: bool
+        self.storage_encryption_key = ""  # type: str
+        self.create_new_role = False  # type: bool
+        self.policies_arns_for_new_role = []  # type: list[str]
 
         get_attr = attribute_getter(attributes, self.__deploymentModel__)
         self.aws_ami_id = get_attr("AWS AMI Id")
@@ -49,11 +52,13 @@ class DeployAWSEc2AMIInstanceResourceModel:
         self.storage_size = get_attr("Storage Size")
         self.storage_iops = get_attr("Storage IOPS")
         self.storage_type = get_attr("Storage Type")
-        self.storage_encryption_key = get_attr("Storage Encryption Key")
+        self.storage_encryption_key = get_attr("Storage Encryption Key", default="")
         self.instance_type = get_attr("Instance Type")
         self.iam_role = get_attr("IAM Role Name")
-        self.create_new_role = get_attr("Create New Role", bool)
-        self.policies_arns_for_new_role = get_attr("Policies ARNs For New Role", list)
+        self.create_new_role = get_attr("Create New Role", bool, default=False)
+        self.policies_arns_for_new_role = get_attr(
+            "Policies ARNs For New Role", list, default=""
+        )
         self.root_volume_name = get_attr("Root Volume Name")
         self.wait_for_ip = get_attr("Wait for IP", bool)
         self.wait_for_status_check = get_attr("Wait for Status Check", bool)

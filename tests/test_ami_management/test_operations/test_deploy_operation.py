@@ -1,6 +1,8 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, call
 
+from botocore.exceptions import ClientError
+
 from cloudshell.cp.core.models import (
     ConnectSubnet,
     ConnectToSubnetParams,
@@ -24,6 +26,16 @@ class TestDeployOperation(TestCase):
     def setUp(self):
         self.ec2_datamodel = Mock(vpc_mode=VpcMode.DYNAMIC)
         self.ec2_session = Mock()
+        self.iam_client = Mock()
+        self.iam_client.list_attached_role_policies.side_effect = ClientError(
+            {
+                "Error": {
+                    "Code": "NoSuchEntity",
+                    "Message": "The role with name cannot be found.",
+                }
+            },
+            "NoSuchEntity",
+        )
         self.ec2_client = Mock()
         self.s3_session = Mock()
         self.instance_service = Mock()
@@ -69,6 +81,7 @@ class TestDeployOperation(TestCase):
             self.deploy_operation.deploy(
                 self.ec2_session,
                 self.s3_session,
+                self.iam_client,
                 inst_name,
                 reservation,
                 self.ec2_datamodel,
@@ -94,9 +107,12 @@ class TestDeployOperation(TestCase):
         # act
         self.deploy_operation._rollback_deploy(
             ec2_session=self.ec2_session,
+            iam_client=self.iam_client,
             instance_id=inst_id,
             custom_security_group=security_group,
             network_config_results=network_config_results,
+            app_name="vm_name",
+            reservation=Mock(),
             logger=self.logger,
         )
 
@@ -159,6 +175,7 @@ class TestDeployOperation(TestCase):
         res = self.deploy_operation.deploy(
             ec2_session=self.ec2_session,
             s3_session=self.s3_session,
+            iam_client=self.iam_client,
             name=inst_name,
             reservation=reservation,
             aws_ec2_cp_resource_model=self.ec2_datamodel,
@@ -247,6 +264,7 @@ class TestDeployOperation(TestCase):
         res = self.deploy_operation.deploy(
             ec2_session=self.ec2_session,
             s3_session=self.s3_session,
+            iam_client=self.iam_client,
             name=inst_name,
             reservation=reservation,
             aws_ec2_cp_resource_model=self.ec2_datamodel,
@@ -479,6 +497,7 @@ class TestDeployOperation(TestCase):
             ValueError,
             self.deploy_operation._create_deployment_parameters,
             ec2_session=Mock(),
+            iam_client=Mock(),
             aws_ec2_resource_model=self.ec2_datamodel,
             ami_deployment_model=ami,
             network_actions=network_actions,
@@ -487,6 +506,7 @@ class TestDeployOperation(TestCase):
             key_pair="keypair",
             reservation=Mock(),
             network_config_results=Mock(),
+            app_name="vm_name",
             logger=self.logger,
         )
 
@@ -501,6 +521,7 @@ class TestDeployOperation(TestCase):
         ami_model.iam_role = ""
         ami_model.custom_tags = ""
         ami_model.static_sg_id = ""
+        ami_model.create_new_role = False
 
         network_actions = None
         vpc = Mock()
@@ -508,6 +529,7 @@ class TestDeployOperation(TestCase):
 
         aws_model = self.deploy_operation._create_deployment_parameters(
             ec2_session=ec2_session,
+            iam_client=self.iam_client,
             aws_ec2_resource_model=self.ec2_datamodel,
             ami_deployment_model=ami_model,
             network_actions=network_actions,
@@ -516,6 +538,7 @@ class TestDeployOperation(TestCase):
             key_pair="keypair",
             reservation=Mock(),
             network_config_results=MagicMock(),
+            app_name="vm_name",
             logger=self.logger,
         )
 
@@ -533,12 +556,14 @@ class TestDeployOperation(TestCase):
         ami_model = Mock()
         ami_model.iam_role = ""
         ami_model.custom_tags = ""
+        ami_model.create_new_role = False
         network_actions = None
         vpc = Mock()
         self.deploy_operation._get_block_device_mappings = Mock()
 
         aws_model = self.deploy_operation._create_deployment_parameters(
             ec2_session=ec2_session,
+            iam_client=self.iam_client,
             aws_ec2_resource_model=self.ec2_datamodel,
             ami_deployment_model=ami_model,
             network_actions=network_actions,
@@ -547,6 +572,7 @@ class TestDeployOperation(TestCase):
             key_pair="keypair",
             reservation=Mock(),
             network_config_results=MagicMock(),
+            app_name="vm_name",
             logger=self.logger,
         )
 
@@ -564,6 +590,7 @@ class TestDeployOperation(TestCase):
         ami_model = Mock()
         ami_model.iam_role = "admin_role"
         ami_model.custom_tags = ""
+        ami_model.create_new_role = False
 
         vpc = Mock()
         self.deploy_operation._get_block_device_mappings = Mock()
@@ -571,6 +598,7 @@ class TestDeployOperation(TestCase):
 
         aws_model = self.deploy_operation._create_deployment_parameters(
             ec2_session=ec2_session,
+            iam_client=self.iam_client,
             aws_ec2_resource_model=self.ec2_datamodel,
             ami_deployment_model=ami_model,
             network_actions=network_actions,
@@ -579,6 +607,7 @@ class TestDeployOperation(TestCase):
             key_pair="keypair",
             reservation=Mock(),
             network_config_results=MagicMock(),
+            app_name="vm_name",
             logger=self.logger,
         )
 
@@ -595,11 +624,13 @@ class TestDeployOperation(TestCase):
         network_actions = None
         ami_model.iam_role = "arn:aws:iam::admin_role"
         ami_model.custom_tags = ""
+        ami_model.create_new_role = False
         vpc = Mock()
         self.deploy_operation._get_block_device_mappings = Mock()
 
         aws_model = self.deploy_operation._create_deployment_parameters(
             ec2_session=ec2_session,
+            iam_client=self.iam_client,
             aws_ec2_resource_model=self.ec2_datamodel,
             ami_deployment_model=ami_model,
             network_actions=network_actions,
@@ -608,6 +639,7 @@ class TestDeployOperation(TestCase):
             key_pair="keypair",
             reservation=Mock(),
             network_config_results=MagicMock(),
+            app_name="vm_name",
             logger=self.logger,
         )
 
@@ -777,6 +809,7 @@ class TestDeployOperation(TestCase):
             deploy_operation.deploy(
                 ec2_session=Mock(),
                 s3_session=Mock(),
+                iam_client=self.iam_client,
                 name=Mock(),
                 reservation=Mock(),
                 aws_ec2_cp_resource_model=Mock(vpc_mode=VpcMode.DYNAMIC),

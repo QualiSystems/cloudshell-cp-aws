@@ -16,6 +16,17 @@ from cloudshell.cp.aws.domain.handlers.ec2 import (
 class TestDeleteOperation(TestCase):
     def setUp(self):
         self.ec2_session = Mock()
+        self.iam_client = Mock()
+        self.iam_client.list_attached_role_policies.side_effect = ClientError(
+            {
+                "Error": {
+                    "Code": "NoSuchEntity",
+                    "Message": "The role with name cannot be found.",
+                }
+            },
+            "NoSuchEntity",
+        )
+        self.reservation = Mock()
         self.security_group_service = Mock()
         self.elastic_ip_service = Mock()
         self.delete_operation = DeleteAMIOperation(
@@ -41,7 +52,14 @@ class TestDeleteOperation(TestCase):
         )
         self.delete_operation.elastic_ip_service.release_elastic_address = Mock()
 
-        self.delete_operation.delete_instance(self.logger, self.ec2_session, "id")
+        self.delete_operation.delete_instance(
+            self.logger,
+            self.ec2_session,
+            self.iam_client,
+            "id",
+            "vm_name",
+            self.reservation,
+        )
 
         self.delete_operation.instance_service.get_instance_by_id.called_with(
             self.ec2_session, "id"
@@ -67,7 +85,9 @@ class TestDeleteOperation(TestCase):
         self.ec2_session.SecurityGroup = Mock(return_value=sg)
 
         # act
-        self.delete_operation.delete_instance(self.logger, self.ec2_session, "id")
+        self.delete_operation.delete_instance(
+            self.logger, self.ec2_session, self.iam_client, "id", "vm_name", reservation
+        )
 
         # assert
         self.security_group_service.delete_security_group.assert_called_with(sg)
@@ -81,7 +101,14 @@ class TestDeleteOperation(TestCase):
         )
 
         # act
-        self.delete_operation.delete_instance(self.logger, self.ec2_session, "id")
+        self.delete_operation.delete_instance(
+            self.logger,
+            self.ec2_session,
+            self.iam_client,
+            "id",
+            "vm_name",
+            self.reservation,
+        )
 
         # assert
         self.logger.info.assert_called_with("Aws instance id was already terminated")
