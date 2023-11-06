@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import EC2Client, EC2ServiceResource  # noqa: I900
+    from mypy_boto3_iam import IAMClient  # noqa: I900
     from mypy_boto3_s3 import S3ServiceResource  # noqa: I900
 
 
@@ -12,6 +13,7 @@ class AwsApiClients:
         s3_session: "S3ServiceResource",
         ec2_client: "EC2Client",
         default_ec2_session: "EC2ServiceResource",
+        iam_client: "IAMClient",
     ):
         """Api clients.
 
@@ -30,3 +32,4 @@ class AwsApiClients:
         self.s3_session = s3_session
         self.ec2_client = ec2_client
         self.default_ec2_session = default_ec2_session
+        self.iam_client = iam_client

@@ -364,7 +364,12 @@ class AWSShell:
             self.delete_ami_operation.delete_instance(
                 logger=shell_context.logger,
                 ec2_session=shell_context.aws_api.ec2_session,
+                iam_client=shell_context.aws_api.iam_client,
                 instance_id=data_holder.vmdetails.uid,
+                vm_name=data_holder.name,
+                reservation=self.model_parser.convert_to_reservation_model(
+                    command_context.remote_reservation,
+                ),
             )
 
     def get_application_ports(self, command_context):
@@ -416,6 +421,7 @@ class AWSShell:
             deploy_data = self.deploy_ami_operation.deploy(
                 ec2_session=shell_context.aws_api.ec2_session,
                 s3_session=shell_context.aws_api.s3_session,
+                iam_client=shell_context.aws_api.iam_client,
                 name=deploy_action.actionParams.appName,
                 reservation=self.model_parser.convert_to_reservation_model(
                     command_context.reservation

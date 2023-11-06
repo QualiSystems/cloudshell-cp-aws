@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from logging import Logger
+
 from cloudshell.shell.core.session.cloudshell_session import CloudShellSessionContext
 from cloudshell.shell.core.session.logging_session import LoggingSessionContext
 
@@ -16,10 +20,12 @@ class AwsShellContext:
         self.context = context
         self.aws_session_manager = aws_session_manager
         self.model_parser = AWSModelsParser()
+        self._logger: Logger | None = None
 
-    def __enter__(self) -> "AwsShellContextModel":
+    def __enter__(self) -> AwsShellContextModel:
         """Initializes all aws shell context dependencies."""
         with LoggingSessionContext(self.context) as logger:
+            self._logger = logger
             with CloudShellSessionContext(self.context) as cloudshell_session:
                 with AwsResourceModelContext(
                     self.context, self.model_parser
@@ -44,7 +50,8 @@ class AwsShellContext:
         :param exc_tb: Exception traceback
         :return:
         """
-        pass
+        if self._logger and exc_type:
+            self._logger.exception("Exception occurred in AwsShellContext")
 
 
 class AwsShellContextModel:

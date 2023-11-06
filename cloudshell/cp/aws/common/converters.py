@@ -1,3 +1,4 @@
+import re
 from typing import Any, Dict, Optional, Type, Union
 
 
@@ -24,6 +25,9 @@ def attribute_getter(attributes: Dict[str, Any], namespace: str):
             value = convert_to_bool(value)
         elif convert_to_type is int:
             value = int(value)
+        elif convert_to_type is list:
+            value = re.split(r"[,;]", value)
+            value = list(filter(bool, value))
         else:
             raise NotImplementedError(f"Convert to {convert_to_type} is not supported")
         return value

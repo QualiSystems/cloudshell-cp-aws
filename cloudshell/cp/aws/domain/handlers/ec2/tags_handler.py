@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import attr
 import botocore
@@ -8,7 +8,8 @@ from retrying import retry
 from cloudshell.cp.aws.common.exceptions import BaseAwsException
 
 if TYPE_CHECKING:
-    from mypy_boto3_ec2.type_defs import TagTypeDef  # noqa: I900
+    from mypy_boto3_ec2.type_defs import TagTypeDef as Ec2TagsType  # noqa: I900
+    from mypy_boto3_iam.type_defs import TagTypeDef as IamTagsType  # noqa: I900
 
     from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
@@ -98,7 +99,7 @@ class TagsHandler:
         return f"Tags: {self._tags_dict}"
 
     @property
-    def aws_tags(self) -> List["TagTypeDef"]:
+    def aws_tags(self) -> List[Union["Ec2TagsType", "IamTagsType"]]:
         return [{"Key": key, "Value": value} for key, value in self._tags_dict.items()]
 
     def get(self, name: str) -> Optional[str]:

@@ -14,6 +14,10 @@ from cloudshell.cp.core.models import (
 from cloudshell.cp.core.utils import convert_dict_to_attributes_list
 
 from cloudshell.cp.aws.common import retry_helper
+from cloudshell.cp.aws.common.role_for_instance import (
+    create_profile_for_instance,
+    delete_profile_for_instance,
+)
 from cloudshell.cp.aws.domain.common.cancellation_service import check_if_cancelled
 from cloudshell.cp.aws.domain.common.list_helper import first_or_default
 from cloudshell.cp.aws.domain.handlers.ec2 import (
@@ -34,6 +38,7 @@ if TYPE_CHECKING:
 
     from mypy_boto3_ec2 import EC2ServiceResource  # noqa: I900
     from mypy_boto3_ec2.service_resource import Vpc  # noqa: I900
+    from mypy_boto3_iam import IAMClient  # noqa: I900
 
     from cloudshell.cp.aws.domain.services.ec2.network_interface import (
         NetworkInterfaceService,
@@ -92,6 +97,7 @@ class DeployAMIOperation:
         self,
         ec2_session,
         s3_session,
+        iam_client,
         name,
         reservation,
         aws_ec2_cp_resource_model,
@@ -105,6 +111,7 @@ class DeployAMIOperation:
         :param ec2_client: boto3.ec2.client
         :param ec2_session: EC2 session
         :param s3_session: S3 Session
+        :param IAMClient iam_client: IAM Client
         :param name: The name of the deployed ami
         :type name: str
         :param reservation: reservation model
@@ -155,6 +162,7 @@ class DeployAMIOperation:
 
             ami_deployment_info = self._create_deployment_parameters(
                 ec2_session=ec2_session,
+                iam_client=iam_client,
                 aws_ec2_resource_model=aws_ec2_cp_resource_model,
                 ami_deployment_model=ami_deployment_model,
                 network_actions=network_actions,
@@ -163,6 +171,7 @@ class DeployAMIOperation:
                 key_pair=key_name,
                 reservation=reservation,
                 network_config_results=network_config_results,
+                app_name=name,
                 logger=logger,
             )
 
@@ -210,9 +219,12 @@ class DeployAMIOperation:
         except Exception as e:
             self._rollback_deploy(
                 ec2_session=ec2_session,
+                iam_client=iam_client,
                 instance_id=self._extract_instance_id_on_cancellation(e, instance),
                 custom_security_group=security_group,
                 network_config_results=network_config_results,
+                app_name=name,
+                reservation=reservation,
                 logger=logger,
             )
             raise  # re-raise original exception after rollback
@@ -536,6 +548,7 @@ class DeployAMIOperation:
     def _create_deployment_parameters(
         self,
         ec2_session,
+        iam_client,
         aws_ec2_resource_model,
         ami_deployment_model,
         network_actions,
@@ -544,6 +557,7 @@ class DeployAMIOperation:
         key_pair,
         reservation,
         network_config_results,
+        app_name,
         logger,
     ):
         """# noqa
@@ -584,7 +598,7 @@ class DeployAMIOperation:
 
         aws_model.aws_ami_id = ami_deployment_model.aws_ami_id
         aws_model.iam_role = self._get_iam_instance_profile_request(
-            ami_deployment_model
+            app_name, ami_deployment_model, iam_client, reservation, logger
         )
         aws_model.min_count = 1
         aws_model.max_count = 1
@@ -629,8 +643,21 @@ class DeployAMIOperation:
 
         return aws_model
 
-    def _get_iam_instance_profile_request(self, ami_deployment_model):
-        role = ami_deployment_model.iam_role
+    def _get_iam_instance_profile_request(
+        self,
+        app_name: str,
+        ami_deployment_model: DeployAWSEc2AMIInstanceResourceModel,
+        iam_client: IAMClient,
+        reservation: ReservationModel,
+        logger,
+    ) -> dict[str, str]:
+        if ami_deployment_model.create_new_role:
+            role = create_profile_for_instance(
+                app_name, ami_deployment_model, iam_client, reservation, logger
+            )
+        else:
+            role = ami_deployment_model.iam_role
+
         if not role:
             return {}
         if role.startswith("arn:"):
@@ -912,9 +939,12 @@ class DeployAMIOperation:
     def _rollback_deploy(
         self,
         ec2_session,
+        iam_client,
         instance_id,
         custom_security_group,
         network_config_results,
+        app_name,
+        reservation,
         logger,
     ):
         """# noqa
@@ -949,6 +979,8 @@ class DeployAMIOperation:
                 self.elastic_ip_service.find_and_release_elastic_address(
                     ec2_session=ec2_session, elastic_ip=r.public_ip
                 )
+
+        delete_profile_for_instance(app_name, iam_client, reservation, logger)
 
     def _validate_image_available(self, image, ami_id):
         if hasattr(image, "state") and image.state == "available":

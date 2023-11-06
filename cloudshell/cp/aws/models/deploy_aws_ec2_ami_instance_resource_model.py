@@ -52,6 +52,8 @@ class DeployAWSEc2AMIInstanceResourceModel:
         self.storage_encryption_key = get_attr("Storage Encryption Key")
         self.instance_type = get_attr("Instance Type")
         self.iam_role = get_attr("IAM Role Name")
+        self.create_new_role = get_attr("Create New Role", bool)
+        self.policies_arns_for_new_role = get_attr("Policies ARNs For New Role", list)
         self.root_volume_name = get_attr("Root Volume Name")
         self.wait_for_ip = get_attr("Wait for IP", bool)
         self.wait_for_status_check = get_attr("Wait for Status Check", bool)
