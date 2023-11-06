@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 class AWSSessionProvider:
     EC2 = "ec2"
     S3 = "s3"
+    IAM = "iam"
 
     def __init__(self):
         self.test_cred_path = os.path.join(os.path.dirname(__file__), "test_cred.ini")
@@ -52,6 +53,7 @@ class AWSSessionProvider:
             s3_session=default_session.resource(self.S3),
             ec2_client=aws_ec2_session.client(self.EC2),
             default_ec2_session=default_session.resource(self.EC2),
+            iam_client=aws_ec2_session.client(self.IAM),
         )
 
     def get_s3_session(self, cloudshell_session, aws_ec2_data_model):

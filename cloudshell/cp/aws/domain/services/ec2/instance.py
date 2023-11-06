@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, List, Optional
 
+from retrying import retry
+
 from cloudshell.cp.aws.domain.handlers.ec2 import TagsHandler
 from cloudshell.cp.aws.models.reservation_model import ReservationModel
 
@@ -18,6 +20,10 @@ if TYPE_CHECKING:
     from cloudshell.cp.aws.models.ami_deployment_model import AMIDeploymentModel
 
 
+def _retry_profile_not_found(exception: Exception) -> bool:
+    return "iamInstanceProfile.name is invalid" in str(exception)
+
+
 class InstanceService:
     def __init__(
         self,
@@ -27,6 +33,12 @@ class InstanceService:
         self.instance_waiter = instance_waiter
         self.network_interface_service = network_interface_service
 
+    @retry(
+        # if we created a new profile, it takes time for aws to recognize it
+        retry_on_exception=_retry_profile_not_found,
+        wait_fixed=1000,  # 1 sec
+        stop_max_delay=30 * 1000,  # 30 sec
+    )
     def create_instance(
         self,
         ec2_session: "EC2ServiceResource",
@@ -40,7 +52,7 @@ class InstanceService:
             KeyName=ami_deployment_info.aws_key,
             BlockDeviceMappings=ami_deployment_info.block_device_mappings,
             NetworkInterfaces=ami_deployment_info.network_interfaces,
-            IamInstanceProfile=ami_deployment_info.iam_role,
+            IamInstanceProfile=ami_deployment_info.iam_role,  # profile
             UserData=ami_deployment_info.user_data,
         )[0]
         return instance

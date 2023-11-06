@@ -1,5 +1,6 @@
 from botocore.exceptions import ClientError
 
+from cloudshell.cp.aws.common.role_for_instance import delete_profile_for_instance
 from cloudshell.cp.aws.domain.handlers.ec2 import IsolationTagValue, TagsHandler
 
 
@@ -25,7 +26,9 @@ class DeleteAMIOperation:
         self.security_group_service = security_group_service
         self.elastic_ip_service = elastic_ip_service
 
-    def delete_instance(self, logger, ec2_session, instance_id):
+    def delete_instance(
+        self, logger, ec2_session, iam_client, instance_id, vm_name, reservation
+    ):
         """# noqa
         Will terminate the instance safely
         :param logging.Logger logger:
@@ -35,7 +38,9 @@ class DeleteAMIOperation:
         :return:
         """
         try:
-            self._delete(ec2_session, instance_id)
+            self._delete(
+                ec2_session, iam_client, instance_id, vm_name, reservation, logger
+            )
         except ClientError as clientErr:
             error = "Error"
             code = "Code"
@@ -54,7 +59,9 @@ class DeleteAMIOperation:
                 logger.info(f"Aws instance {instance_id} was already terminated")
                 return
 
-    def _delete(self, ec2_session, instance_id):
+    def _delete(
+        self, ec2_session, iam_client, instance_id, vm_name, reservation, logger
+    ):
         """# noqa
         Will terminate the instance
         :param ec2_session: ec2 sessoion
@@ -85,5 +92,8 @@ class DeleteAMIOperation:
                 tags = TagsHandler.from_tags_list(security_group.tags)
                 if tags.get_isolation() is IsolationTagValue.EXCLUSIVE:
                     self.security_group_service.delete_security_group(security_group)
+
+        app_blueprint_name = vm_name.split(f" {instance_id}")[0]
+        delete_profile_for_instance(app_blueprint_name, iam_client, reservation, logger)
 
         return True
