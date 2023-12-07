@@ -625,7 +625,14 @@ class DeployAMIOperation:
                 ami_deployment_model.allow_all_sandbox_traffic,
             )
         if ami_deployment_model.static_sg_id:
-            security_group_ids.append(ami_deployment_model.static_sg_id)
+            sg_id = ami_deployment_model.static_sg_id
+            if not (
+                sg_id.startswith("sg-")
+                and self.security_group_service.get(ec2_session, sg_id)
+            ):
+                sg = self.security_group_service.get_security_group_by_name(vpc, sg_id)
+                sg_id = sg.id
+            security_group_ids.append(sg_id)
 
         aws_model.security_group_ids = security_group_ids
 

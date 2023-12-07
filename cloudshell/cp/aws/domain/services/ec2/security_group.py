@@ -78,6 +78,15 @@ class SecurityGroupService:
         return security_groups[0]
 
     @staticmethod
+    def get(ec2_session, id_: str) -> Optional["SecurityGroup"]:
+        sg = ec2_session.SecurityGroup(id_)
+        try:
+            sg.reload()
+        except ClientError:
+            sg = None
+        return sg
+
+    @staticmethod
     def get_reservation_id(security_group: "SecurityGroup") -> Optional[str]:
         return TagsHandler.from_tags_list(security_group.tags).get_reservation_id()
 
