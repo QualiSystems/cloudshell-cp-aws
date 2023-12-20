@@ -872,6 +872,11 @@ class DeployAMIOperation:
                 },
             }
         ]
+        block_device_mappings.extend(
+            bdm
+            for bdm in image.block_device_mappings
+            if bdm["DeviceName"] != image.root_device_name and bdm.get("Ebs")
+        )
 
         # add iops if needed - storage_iops is required for requests to create io1
         # volumes only
@@ -899,8 +904,9 @@ class DeployAMIOperation:
 
         if ami_deployment_model.storage_encryption_key:
             key = ami_deployment_model.storage_encryption_key
-            block_device_mappings[0]["Ebs"]["KmsKeyId"] = key
-            block_device_mappings[0]["Ebs"]["Encrypted"] = True
+            for bdm in block_device_mappings:
+                bdm["Ebs"]["KmsKeyId"] = key
+                bdm["Ebs"]["Encrypted"] = True
 
         return block_device_mappings
 
