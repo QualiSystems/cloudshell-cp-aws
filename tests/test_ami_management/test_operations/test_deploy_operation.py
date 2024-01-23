@@ -894,3 +894,20 @@ class TestDeployOperation(TestCase):
         self.assertEqual(network_config_results[1].private_ip, "pri_ip_2")
         self.assertEqual(network_config_results[1].mac_address, "mac2")
         self.assertEqual(network_config_results[1].public_ip, "")
+
+    def test__get_custom_tags(self):
+        # act
+        res_empty_tags = self.deploy_operation._get_custom_tags(
+            custom_tags="", logger=self.logger
+        )
+        res = self.deploy_operation._get_custom_tags(
+            custom_tags="tag1:value1, tag2 : value2 , tag3:prefix::value3, tag4;value4",
+            logger=self.logger,
+        )
+
+        # assert
+        self.assertEqual(res_empty_tags, {})
+
+        self.assertEqual(
+            res, {"tag1": "value1", "tag2": "value2", "tag3": "prefix::value3"}
+        )

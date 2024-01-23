@@ -587,8 +587,7 @@ class DeployAMIOperation:
         self._validate_image_available(image, ami_deployment_model.aws_ami_id)
 
         aws_model.custom_tags = self._get_custom_tags(
-            custom_tags=ami_deployment_model.custom_tags,
-            logger=logger
+            custom_tags=ami_deployment_model.custom_tags, logger=logger
         )
         aws_model.source_dest_check = ami_deployment_model.enable_source_dest_check
         aws_model.status_check_timeout = ami_deployment_model.status_check_timeout
