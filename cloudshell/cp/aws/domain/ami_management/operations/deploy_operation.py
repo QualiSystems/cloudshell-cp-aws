@@ -587,7 +587,8 @@ class DeployAMIOperation:
         self._validate_image_available(image, ami_deployment_model.aws_ami_id)
 
         aws_model.custom_tags = self._get_custom_tags(
-            custom_tags=ami_deployment_model.custom_tags
+            custom_tags=ami_deployment_model.custom_tags,
+            logger=logger
         )
         aws_model.source_dest_check = ami_deployment_model.enable_source_dest_check
         aws_model.status_check_timeout = ami_deployment_model.status_check_timeout
@@ -1022,7 +1023,7 @@ class DeployAMIOperation:
             ):
                 result.public_ip = interface["Association"]["PublicIp"]
 
-    def _get_custom_tags(self, custom_tags):
+    def _get_custom_tags(self, custom_tags, logger):
         res = {}
         if custom_tags:
             for data in custom_tags.split(","):
@@ -1030,7 +1031,7 @@ class DeployAMIOperation:
                     key, value = data.split(":", maxsplit=1)
                     res[key.strip()] = value.strip()
                 except ValueError:
-                    pass
+                    logger.warning(f"Failed to parse Custom Tag: {data}")
         return res
 
     def _get_user_data(self, user_data_url: str, user_data_run_parameters: str) -> str:
