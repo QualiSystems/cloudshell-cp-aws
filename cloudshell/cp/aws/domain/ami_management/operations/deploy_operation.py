@@ -1025,8 +1025,12 @@ class DeployAMIOperation:
     def _get_custom_tags(self, custom_tags):
         res = {}
         if custom_tags:
-            tags_list = custom_tags.split(",")
-            res = {r.split(":")[0]: r.split(":")[1] for r in tags_list}
+            for data in custom_tags.split(","):
+                try:
+                    key, value = data.split(":", maxsplit=1)
+                    res[key.strip()] = value.strip()
+                except ValueError:
+                    pass
         return res
 
     def _get_user_data(self, user_data_url: str, user_data_run_parameters: str) -> str:
