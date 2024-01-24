@@ -86,4 +86,4 @@ def delete_profile_for_instance(
 
 
 def _get_role_name(app_blueprint_name: str, reservation_id: str) -> str:
-    return f"{app_blueprint_name}-{reservation_id}"
+    return f"{app_blueprint_name.replace(' ', '_')}-{reservation_id}"
